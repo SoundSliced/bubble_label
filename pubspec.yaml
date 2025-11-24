@@ -1,5 +1,6 @@
 name: bubble_label
 description: A small Flutter package that shows a floating bubble label anchored to a child widget, and optional background overlay + simple show/dismiss animations.
+license: MIT
 issue_tracker: https://github.com/SoundSliced/bubble_label/issues
 repository: https://github.com/SoundSliced/bubble_label
 version: 1.0.0

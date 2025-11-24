@@ -3,16 +3,81 @@ import 'package:bubble_label/bubble_label.dart';
 
 void main() => runApp(const ExampleApp());
 
-class ExampleApp extends StatelessWidget {
+class ExampleApp extends StatefulWidget {
   const ExampleApp({super.key});
+
+  @override
+  State<ExampleApp> createState() => _ExampleAppState();
+}
+
+class _ExampleAppState extends State<ExampleApp> {
+  bool shouldIgnorePointer = true;
+  bool animate = true;
+  bool useOverlay = true;
+
   @override
   Widget build(BuildContext context) {
     return BubbleLabelController(
+      shouldIgnorePointer: shouldIgnorePointer,
       child: MaterialApp(
         title: 'Bubble Label Example',
         home: Scaffold(
           appBar: AppBar(title: const Text('Bubble Label Example')),
-          body: const ExamplePage(),
+          body: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SwitchListTile(
+                        title: const Text('Allow bubble pointer events'),
+                        value: shouldIgnorePointer == false,
+                        onChanged: (val) {
+                          setState(() => shouldIgnorePointer = !val);
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: SwitchListTile(
+                        title: const Text('Animate'),
+                        value: animate,
+                        onChanged: (val) => setState(() => animate = val),
+                      ),
+                    ),
+                    Expanded(
+                      child: SwitchListTile(
+                        title: const Text('Use overlay'),
+                        value: useOverlay,
+                        onChanged: (val) => setState(() => useOverlay = val),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                  child: ExamplePage(animate: animate, useOverlay: useOverlay)),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      key: const Key('dismiss-button'),
+                      onPressed: () => BubbleLabel.dismiss(animate: false),
+                      child: const Text('Dismiss'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      key: const Key('dismiss-button-animate'),
+                      onPressed: () => BubbleLabel.dismiss(animate: true),
+                      child: const Text('Dismiss (animated)'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -20,35 +85,110 @@ class ExampleApp extends StatelessWidget {
 }
 
 class ExamplePage extends StatelessWidget {
-  const ExamplePage({super.key});
+  final bool animate;
+  final bool useOverlay;
+
+  const ExamplePage({super.key, this.animate = true, this.useOverlay = true});
   @override
   Widget build(BuildContext context) {
+    // We put a few sample actions to demonstrate package features
     return Center(
-      child: Builder(builder: (context) {
-        return ElevatedButton(
-          onPressed: () {
-            final renderBox = context.findRenderObject() as RenderBox;
-            final position = renderBox.localToGlobal(Offset.zero);
-            final size = renderBox.size;
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Builder(builder: (context) {
+            return ElevatedButton(
+              key: const Key('tap-show'),
+              onPressed: () {
+                final renderBox = context.findRenderObject() as RenderBox;
+                final position = renderBox.localToGlobal(Offset.zero);
+                final size = renderBox.size;
 
-            BubbleLabel.show(
-              bubbleContent: BubbleLabelContent(
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Text('Hello bubble!'),
-                ),
-                childWidgetPosition: position,
-                childWidgetSize: size,
-                labelWidth: 140,
-                labelHeight: 40,
-                bubbleColor: Colors.deepPurpleAccent,
-                backgroundOverlayLayerOpacity: 0.3,
+                BubbleLabel.show(
+                  bubbleContent: BubbleLabelContent(
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text('Hello bubble!'),
+                    ),
+                    childWidgetPosition: position,
+                    childWidgetSize: size,
+                    labelWidth: 140,
+                    labelHeight: 40,
+                    bubbleColor: Colors.deepPurpleAccent,
+                    backgroundOverlayLayerOpacity: useOverlay ? 0.3 : 0.0,
+                  ),
+                  animate: animate,
+                );
+              },
+              child: const Text('Tap to show bubble'),
+            );
+          }),
+          const SizedBox(height: 12),
+          Builder(builder: (context) {
+            return ElevatedButton(
+              key: const Key('tap-show-no-overlay'),
+              onPressed: () {
+                final renderBox = context.findRenderObject() as RenderBox;
+                final position = renderBox.localToGlobal(Offset.zero);
+                final size = renderBox.size;
+
+                BubbleLabel.show(
+                  bubbleContent: BubbleLabelContent(
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text('No overlay'),
+                    ),
+                    childWidgetPosition: position,
+                    childWidgetSize: size,
+                    labelWidth: 180,
+                    labelHeight: 44,
+                    bubbleColor: Colors.green,
+                    backgroundOverlayLayerOpacity: 0.0,
+                    floatingVerticalPadding: 10,
+                  ),
+                  animate: animate,
+                );
+              },
+              child: const Text('Tap: show without overlay'),
+            );
+          }),
+          const SizedBox(height: 12),
+          Builder(builder: (context) {
+            return GestureDetector(
+              key: const Key('longpress-area'),
+              onLongPress: () {
+                final renderBox = context.findRenderObject() as RenderBox;
+                final position = renderBox.localToGlobal(Offset.zero);
+                final size = renderBox.size;
+
+                BubbleLabel.show(
+                  bubbleContent: BubbleLabelContent(
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text('Long press bubble'),
+                    ),
+                    childWidgetPosition: position,
+                    childWidgetSize: size,
+                    labelWidth: 160,
+                    labelHeight: 48,
+                    bubbleColor: Colors.orangeAccent,
+                    backgroundOverlayLayerOpacity: useOverlay ? 0.25 : 0.0,
+                    shouldActivateOnLongPressOnAllPlatforms: true,
+                  ),
+                  animate: animate,
+                );
+              },
+              child: Container(
+                key: const Key('longpress-container'),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                color: Colors.blueGrey.shade50,
+                child: const Text('Long-press here to show bubble'),
               ),
             );
-          },
-          child: const Text('Tap to show bubble'),
-        );
-      }),
+          }),
+        ],
+      ),
     );
   }
 }

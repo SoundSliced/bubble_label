@@ -78,6 +78,7 @@ class BubbleLabelController extends StatelessWidget {
                     listenTo: BubbleLabel._animationController,
                     builder: () {
                       return IgnorePointer(
+                        key: const Key('bubble_label_background_ignore'),
                         child: Box(
                           height: 100.h,
                           width: 100.w,
@@ -146,6 +147,7 @@ class BubbleLabelController extends StatelessWidget {
                                     .controller.state!.childWidgetSize.width /
                                 2,
                         child: IgnorePointer(
+                          key: const Key('bubble_label_ignore'),
                           ignoring: shouldIgnorePointer,
                           child: Stack(
                             clipBehavior: Clip.none,

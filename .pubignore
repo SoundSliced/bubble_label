@@ -1,0 +1,3 @@
+# Exclude scripts directory from published package
+scripts/
+*.sh

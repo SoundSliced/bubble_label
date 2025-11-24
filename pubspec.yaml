@@ -1,0 +1,28 @@
+name: bubble_label
+description: 
+issue_tracker: https://github.com/SoundSliced/bubble_label/issues
+repository: https://github.com/SoundSliced/bubble_label
+version: 1.0.0
+homepage: https://github.com/SoundSliced/bubble_label
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  assorted_layout_widgets: ^11.0.0
+  flutter_animate: ^4.5.2
+  states_rebuilder_extended: ^1.0.2
+  soundsliced_dart_extensions: ^1.0.1
+  sizer: ^3.1.3
+
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

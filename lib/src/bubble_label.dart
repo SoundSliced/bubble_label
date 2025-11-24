@@ -325,14 +325,16 @@ class BubbleLabel {
 
   static Future<void> dismiss({bool animate = true}) async {
     if (animate) {
+      // trigger the 'dismiss' animation and refresh after it completes
       BubbleLabel._animationController.state = false;
-    } else {
-      BubbleLabel._animationController.state = null;
-    }
-    // log('BubbleLabel2.dismiss()');
-    await Future.delayed(0.3.sec, () {
+      await Future.delayed(0.3.sec);
       BubbleLabel.controller.refresh();
-    });
+    } else {
+      // no animation -> refresh immediately so callers (including tests) don't have
+      // to await a delayed future or pump the test clock
+      BubbleLabel._animationController.state = null;
+      BubbleLabel.controller.refresh();
+    }
   }
 
   //-------------------------------------------------------------//

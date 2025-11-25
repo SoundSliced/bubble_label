@@ -272,9 +272,9 @@ final _bubbleLabelIsActiveAnimationController = RM.inject<bool?>(
 );
 //******************************************* */
 
+/// Defines the content and appearance of a bubble shown by
+/// `BubbleLabel.show()`.
 class BubbleLabelContent {
-  /// Defines the content and appearance of a bubble shown by
-  /// `BubbleLabel.show()`.
   ///
   /// Create a `BubbleLabelContent` to specify the widget to show inside
   /// the bubble as well as color, size, padding, and how it should

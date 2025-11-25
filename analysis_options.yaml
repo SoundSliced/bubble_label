@@ -4,3 +4,6 @@ linter:
   rules:
     prefer_const_constructors: false
     prefer_const_literals_to_create_immutables: false
+    # Recommend documenting all public members to improve package
+    # discoverability and help pass pub.dev documentation checks.
+    public_member_api_docs: true

@@ -7,15 +7,47 @@ import 'package:sizer/sizer.dart';
 import 'package:soundsliced_dart_extensions/soundsliced_dart_extensions.dart';
 import 'package:states_rebuilder_extended/states_rebuilder_extended.dart';
 
+/// A widget that hosts the bubble label overlay and provides the
+/// layout and animations for displaying the bubble on top of the app
+/// content.
+///
+/// Insert `BubbleLabelController` near the root of your widget tree
+/// (for example inside `MaterialApp`) and the `BubbleLabel` API
+/// will use it to render an overlay containing the bubble.
 class BubbleLabelController extends StatelessWidget {
+  /// The content over which the bubble will be displayed. This widget
+  /// typically represents the main page of your application where
+  /// interactive child widgets live.
   final Widget child;
+
+  /// Controls whether the bubble overlay should ignore pointer events.
+  ///
+  /// When `true` (the default) the bubble overlay will not intercept
+  /// touch or pointer events, so underlying widgets remain interactive.
   final bool shouldIgnorePointer;
+
+  /// Creates a [BubbleLabelController].
+  ///
+  /// The [child] parameter must not be null and represents the content
+  /// over which the bubble overlay will be rendered.
   const BubbleLabelController({
     super.key,
+
+    /// Whether the bubble overlay should ignore pointer events.
+    ///
+    /// Defaults to `true`.
     this.shouldIgnorePointer = true,
+
+    /// The widget over which the bubble is displayed.
+    ///
+    /// Typically the app's page content is passed as `child`.
     required this.child,
   });
 
+  /// Returns the animation effects to apply when the bubble appears
+  /// and disappears.
+  ///
+  /// This is used internally by the controller to animate the bubble.
   List<Effect<dynamic>> getEffects() {
     List<Effect<dynamic>> effects = [];
 
@@ -241,14 +273,51 @@ final _bubbleLabelIsActiveAnimationController = RM.inject<bool?>(
 //******************************************* */
 
 class BubbleLabelContent {
+  /// Defines the content and appearance of a bubble shown by
+  /// `BubbleLabel.show()`.
+  ///
+  /// Create a `BubbleLabelContent` to specify the widget to show inside
+  /// the bubble as well as color, size, padding, and how it should
+  /// behave when activated.
+  /// The background color to use for the bubble itself. If null, a
+  /// default color will be used by `_BubbleWidget`.
   final Color? bubbleColor;
-  final double labelWidth, labelHeight, floatingVerticalPadding;
+
+  /// Width of the bubble in logical pixels.
+  final double labelWidth;
+
+  /// Height of the bubble in logical pixels.
+  final double labelHeight;
+
+  /// Vertical padding between the child widget and the bubble (floating
+  /// offset in logical pixels).
+  final double floatingVerticalPadding;
+
+  /// The widget to display inside the bubble. When null the bubble
+  /// will contain an empty `Container`.
   final Widget? child;
+
+  /// The opacity of the background overlay layer that will darken the
+  /// content behind the bubble.
   final double? backgroundOverlayLayerOpacity;
+
+  /// When true, the bubble will be activated on long press on all
+  /// platforms (not just mobile).
   final bool shouldActivateOnLongPressOnAllPlatforms;
+
+  /// The global position (screen coordinates) of the widget that the
+  /// bubble is associated with. This is used to position the bubble.
   final Offset childWidgetPosition;
+
+  /// The size of the widget that the bubble is associated with. This
+  /// is used for precise positioning and to calculate the bubble
+  /// position.
   final Size childWidgetSize;
 
+  /// Creates a `BubbleLabelContent`.
+  ///
+  /// The `bubbleColor`, `labelWidth`, and `labelHeight` parameters
+  /// can be used to customize the appearance of the bubble.
   BubbleLabelContent({
     this.bubbleColor,
     this.child,
@@ -261,6 +330,9 @@ class BubbleLabelContent {
     this.childWidgetSize = const Size(100, 40),
   });
 
+  /// Returns a copy of this `BubbleLabelContent` with the given fields
+  /// replaced by new values. Any parameter that is `null` will preserve
+  /// the original value from the current instance.
   BubbleLabelContent copyWith({
     Color? bubbleColor,
     double? labelWidth,
@@ -290,11 +362,23 @@ class BubbleLabelContent {
   }
 }
 
+/// A simple controller API used to show and dismiss a `BubbleLabel`
+/// overlay from anywhere in the application.
+///
+/// Use `BubbleLabel.show` to display a bubble and `BubbleLabel.dismiss`
+/// to remove it. The `controller` getter exposes the current
+/// `BubbleLabelContent` state so you can read or update the content
+/// directly when needed.
 class BubbleLabel {
+  /// Default constructor for `BubbleLabel`.
   BubbleLabel();
 
   //-------------------------------------------------------------//w
 
+  /// The injected state that holds the current [BubbleLabelContent].
+  ///
+  /// This can be used to read the active bubble content, or to update
+  /// it without calling `show` again.
   static Injected<BubbleLabelContent?> get controller =>
       _bubbleLabelContentController;
 
@@ -302,10 +386,16 @@ class BubbleLabel {
       _bubbleLabelIsActiveAnimationController;
   //-------------------------------------------------------------//
 
+  /// Returns `true` when a bubble is currently active and visible.
   static bool get isActive => controller.state != null;
 
   //-------------------------------------------------------------//
 
+  /// Show a bubble overlay with the provided [bubbleContent].
+  ///
+  /// If `animate` is true (default) the opening animation will be
+  /// played. If another bubble is active, it is dismissed first and
+  /// then the new one is shown.
   static Future<void> show({
     required BubbleLabelContent bubbleContent,
     bool animate = true,
@@ -325,6 +415,11 @@ class BubbleLabel {
 
   //-------------------------------------------------------------//
 
+  /// Dismiss the currently active bubble.
+  ///
+  /// If `animate` is true (default) the closing animation will be
+  /// played. If `animate` is false the bubble is removed immediately
+  /// (useful for testing or when you need an immediate dismissal).
   static Future<void> dismiss({bool animate = true}) async {
     if (animate) {
       // trigger the 'dismiss' animation and refresh after it completes

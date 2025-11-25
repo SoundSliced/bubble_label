@@ -1,3 +1,7 @@
+## 1.0.1
+
+* Version 1.0.1
+
 ## 1.0.0 - Initial stable release (2025-11-24)
 
 - Added `BubbleLabelController` which provides a global overlay for the bubble label.

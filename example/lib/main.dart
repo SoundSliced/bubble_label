@@ -3,6 +3,9 @@ import 'package:bubble_label/bubble_label.dart';
 
 void main() => runApp(const ExampleApp());
 
+/// Example application used in this package's `example` folder.
+///
+/// Demonstrates typical usage of the `BubbleLabel` API.
 class ExampleApp extends StatefulWidget {
   const ExampleApp({super.key});
 
@@ -84,6 +87,8 @@ class _ExampleAppState extends State<ExampleApp> {
   }
 }
 
+/// A simple page with buttons that call `BubbleLabel.show` to display
+/// sample bubbles so users can try out the package behavior.
 class ExamplePage extends StatelessWidget {
   final bool animate;
   final bool useOverlay;

@@ -1,6 +1,9 @@
-## 1.0.1
+## 1.0.1 - Documentation and test improvements (2025-11-25)
 
-* Version 1.0.1
+- Added comprehensive dartdoc comments for public API elements to improve discoverability and meet pub.dev documentation requirements.
+- Enabled the `public_member_api_docs` lint rule in `analysis_options.yaml` to help maintain documentation coverage.
+- Improved README formatting and clarified usage examples; ensured the `example/` app demonstrates pointer, overlay, and animation toggles.
+- Confirmed unit tests cover the main behaviors and updated them where required to ensure stable tests for animation timings and immediate (non-animated) dismissals.
 
 ## 1.0.0 - Initial stable release (2025-11-24)
 

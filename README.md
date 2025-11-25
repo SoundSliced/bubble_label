@@ -16,14 +16,14 @@ Add the package as a dependency in your app's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bubble_label: ^1.0.0
+  bubble_label: ^1.0.1
 ```
 
 > When using this package from outside the repository (published), replace the path dependency with a hosted version.
 
 ## Basic usage
 
-Wrap your app's root widget with `BubbleLabelController` so the overlay can be displayed on top of your UI:
+Wrap your app's root widget with `BubbleLabelController` so the overlay can be displayed on top of your UI. A minimal usage looks like this:
 
 ```dart
 import 'package:flutter/material.dart';
@@ -38,32 +38,15 @@ class MyApp extends StatelessWidget {
     return BubbleLabelController(
       child: MaterialApp(
         home: Scaffold(
-          body: const ExamplePage(),
+          body: Center(child: Text('Your app')),
         ),
       ),
     );
   }
 }
+```
 
-class ExamplePage extends StatelessWidget {
-  const ExamplePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Builder(builder: (context) {
-        return ElevatedButton(
-          onPressed: () {
-            // obtain button position and size
-            final renderBox = context.findRenderObject() as RenderBox;
-            final position = renderBox.localToGlobal(Offset.zero);
-            final size = renderBox.size;
-
-            // show the bubble label
-              BubbleLabel.show(
-                bubbleContent: BubbleLabelContent(
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+Use `BubbleLabel.show(...)` to present a bubble and provide a `BubbleLabelContent` containing the bubble content and position information. For a full runnable example, see the `example/` directory.
 
 Example app features
 --------------------
@@ -76,23 +59,6 @@ Example app features
   - Dismiss — dismisses the bubble immediately (`animate: false`).
   - Dismiss (animated) — dismisses the bubble with animation (`animate: true`).
   - Long-press area — long-pressing this area will call `BubbleLabel.show` with `shouldActivateOnLongPressOnAllPlatforms` set; you can toggle `Use overlay` and `Animate` to see the effect.
-                    child: Text('Hello bubble!'),
-                  ),
-                  childWidgetPosition: position,
-                  childWidgetSize: size,
-                  labelWidth: 140,
-                  labelHeight: 40,
-                  bubbleColor: Colors.deepPurpleAccent,
-                  backgroundOverlayLayerOpacity: 0.3,
-                ),
-              );
-          },
-          child: const Text('Tap to show bubble'),
-        );
-      }),
-    );
-  }
-}
 
 ```
 
@@ -176,6 +142,15 @@ BubbleLabel.show(
   ),
 );
 ```
+## Changelog
+
+### 1.0.1 (2025-11-25)
+
+- Added public documentation (dartdoc) for public API types and members.
+- Enabled `public_member_api_docs` lint in `analysis_options.yaml` to enforce documentation for public members.
+- Cleaned up README formatting and clarified example usage. 
+- Verified tests for overlay opacity, pointer behavior, and animations.
+
 
 ## License
 

@@ -7,6 +7,7 @@ void main() => runApp(const ExampleApp());
 ///
 /// Demonstrates typical usage of the `BubbleLabel` API.
 class ExampleApp extends StatefulWidget {
+  /// Creates the example application.
   const ExampleApp({super.key});
 
   @override
@@ -14,8 +15,16 @@ class ExampleApp extends StatefulWidget {
 }
 
 class _ExampleAppState extends State<ExampleApp> {
+  /// Whether the bubble overlay should ignore pointer events.
+  ///
+  /// When true (default), the overlay will ignore pointer events so the
+  /// underlying widgets remain interactive.
   bool shouldIgnorePointer = true;
+
+  /// Whether to animate show/dismiss operations in the example app.
   bool animate = true;
+
+  /// Toggle to enable a background overlay behind the bubble.
   bool useOverlay = true;
 
   @override
@@ -90,9 +99,14 @@ class _ExampleAppState extends State<ExampleApp> {
 /// A simple page with buttons that call `BubbleLabel.show` to display
 /// sample bubbles so users can try out the package behavior.
 class ExamplePage extends StatelessWidget {
+  /// Whether to animate show/dismiss operations in this example page.
   final bool animate;
+
+  /// Whether the example shows a background overlay while the bubble is active.
   final bool useOverlay;
 
+  /// Creates an `ExamplePage` used in the example app. It exposes two
+  /// configurable options: [animate] and [useOverlay].
   const ExamplePage({super.key, this.animate = true, this.useOverlay = true});
   @override
   Widget build(BuildContext context) {

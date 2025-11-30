@@ -1,3 +1,10 @@
+## 2.0.2 - 2025-11-30
+
+### Fixes
+
+- Documentation: Updated README to use relative image paths so pub.dev renders images inline.
+- Pub.dev page: Added `screenshots` to `pubspec.yaml` so the GIF appears in the Screenshots section; added `topics` for discoverability.
+
 ## 2.0.1
 
 * updated pubspec.yaml and README files

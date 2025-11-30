@@ -24,4 +24,4 @@ This example mirrors the code used in the package README and tests and illustrat
 
 Example animation preview:
 
-![Example gif preview](https://raw.githubusercontent.com/SoundSliced/bubble_label/main/example/assets/example.gif)
+![Example gif preview](assets/example.gif)

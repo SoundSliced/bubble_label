@@ -10,13 +10,20 @@ This provides a lightweight API to display a bubble-style label anchored to a wi
 - Simple show/dismiss animations.
 - Easy to use static API: `BubbleLabel.show(...)` and `BubbleLabel.dismiss()`.
 
+
+## Example app
+
+See the `example/` directory which demonstrates basic usage of the package.
+
+![Bubble label example GIF](example/assets/example.gif)
+
 ## Installation
 
 Add the package as a dependency in your app's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bubble_label: ^2.0.1
+  bubble_label: ^2.0.2
 ```
 
 > When using this package from outside the repository (published), replace the path dependency with a hosted version.
@@ -97,11 +104,6 @@ BubbleLabel.dismiss(animate: true);
  - `floatingVerticalPadding` — adjust the vertical offset between the child widget and bubble.
  - `shouldActivateOnLongPressOnAllPlatforms` — a hint to indicate that the bubble was triggered by long-press; you can set this to true when using long-press activation.
 
-## Example app
-
-See the `example/` directory which demonstrates basic usage of the package.
-
-![Bubble label example GIF](https://raw.githubusercontent.com/SoundSliced/bubble_label/main/example/assets/example.gif)
 
 To run the example application locally:
 

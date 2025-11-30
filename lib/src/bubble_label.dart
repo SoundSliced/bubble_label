@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:sizer/sizer.dart';
 import 'package:soundsliced_dart_extensions/soundsliced_dart_extensions.dart';
 import 'package:states_rebuilder_extended/states_rebuilder_extended.dart';
+import 'package:xid/xid.dart';
 
 /// A widget that hosts the bubble label overlay and provides the
 /// layout and animations for displaying the bubble on top of the app
@@ -107,20 +108,40 @@ class BubbleLabelController extends StatelessWidget {
 
                 // the background overlay layer
                 OnBuilder(
-                    listenTo: BubbleLabel._animationController,
+                    listenToMany: [
+                      BubbleLabel._animationController,
+                      BubbleLabel.controller,
+                    ],
                     builder: () {
+                      // If no bubble is active, always ignore pointer events
+                      // If a bubble is active, only allow pointer events when dismissOnBackgroundTap is true
+                      final shouldIgnore =
+                          BubbleLabel.controller.state == null ||
+                              !(BubbleLabel.controller.state
+                                      ?.dismissOnBackgroundTap ??
+                                  false);
+
                       return IgnorePointer(
                         key: const Key('bubble_label_background_ignore'),
-                        child: Box(
-                          height: 100.h,
-                          width: 100.w,
-                          color: Colors.black.withValues(
-                              alpha: BubbleLabel.controller.state
-                                      ?.backgroundOverlayLayerOpacity ??
-                                  0),
+                        ignoring: shouldIgnore,
+                        child: GestureDetector(
+                          key: const Key('bubble_label_background_gesture'),
+                          onTap: () {
+                            if (BubbleLabel
+                                    .controller.state?.dismissOnBackgroundTap ??
+                                false) {
+                              BubbleLabel.dismiss();
+                            }
+                          },
+                          child: Box(
+                            height: 100.h,
+                            width: 100.w,
+                            color: Colors.black.withValues(
+                                alpha: BubbleLabel.controller.state
+                                        ?.backgroundOverlayLayerOpacity ??
+                                    0),
+                          ),
                         ).animate(
-                          // key: ValueKey(
-                          //     "BubbleLabel2BackgroundAnimation + ${_bubbleLabelIsActiveAnimationController.state}"),
                           effects: _bubbleLabelIsActiveAnimationController
                                       .state ==
                                   null
@@ -161,62 +182,57 @@ class BubbleLabelController extends StatelessWidget {
 
                       //return the bubble widget
                       return Positioned(
-                        // Calculate initial top position
-                        top: BubbleLabel
-                                .controller.state!.childWidgetPosition.dy -
-                            BubbleLabel
-                                    .controller.state!.childWidgetSize.height *
-                                2 -
+                        // Vertical position: bubble bottom at (anchor top - padding).
+                        // Positive padding => bubble above anchor; negative => below.
+                        top: BubbleLabel.controller.state!.anchorPosition.dy -
                             BubbleLabel
                                 .controller.state!.floatingVerticalPadding,
 
                         // Calculate initial left position
                         // to center the bubble on the child widget
-                        left: BubbleLabel
-                                .controller.state!.childWidgetPosition.dx -
-                            BubbleLabel.controller.state!.labelWidth / 2 +
-                            BubbleLabel
-                                    .controller.state!.childWidgetSize.width /
-                                2,
-                        child: IgnorePointer(
-                          key: const Key('bubble_label_ignore'),
-                          ignoring: shouldIgnorePointer,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              //the arrow tip of the buble
-                              Positioned(
-                                left: BubbleLabel.controller.state!.labelWidth /
-                                        2 -
-                                    10,
-                                top: BubbleLabel.controller.state!.labelHeight -
-                                    9.25,
-                                child: Transform.scale(
-                                  scale: 1.5,
-                                  child: Icon(
-                                    Icons.arrow_drop_down,
-                                    color: BubbleLabel
-                                        .controller.state!.bubbleColor,
+                        left: BubbleLabel.controller.state!.anchorPosition.dx +
+                            BubbleLabel.controller.state!.anchorSize.width / 2,
+                        child: FractionalTranslation(
+                          // Center horizontally and align bottom to the top coordinate
+                          translation: const Offset(-0.5, -1.0),
+                          child: IgnorePointer(
+                            key: const Key('bubble_label_ignore'),
+                            ignoring: shouldIgnorePointer,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                //the arrow tip of the buble
+                                Positioned(
+                                  bottom: -12,
+                                  left: 0,
+                                  right: 0,
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Transform.scale(
+                                      scale: 2.0,
+                                      child: Icon(
+                                        Icons.arrow_drop_down,
+                                        color: BubbleLabel
+                                            .controller.state!.bubbleColor,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
 
-                              //the buble
-                              _BubbleWidget(
-                                labelWidth:
-                                    BubbleLabel.controller.state!.labelWidth,
-                                labelHeight:
-                                    BubbleLabel.controller.state!.labelHeight,
-                                bubbleColor:
-                                    BubbleLabel.controller.state!.bubbleColor,
-                                content: BubbleLabel.controller.state!.child ??
-                                    Container(),
-                              )
-                            ],
-                          ).animate(
-                            // key: ValueKey(
-                            //     "labelUpDownAnimation + ${_bubbleLabelIsActiveAnimationController.state}"),
-                            effects: getEffects(),
+                                //the buble
+                                _BubbleWidget(
+                                  bubbleColor:
+                                      BubbleLabel.controller.state!.bubbleColor,
+                                  content:
+                                      BubbleLabel.controller.state!.child ??
+                                          Container(),
+                                )
+                              ],
+                            ).animate(
+                              // key: ValueKey(
+                              //     "labelUpDownAnimation + ${_bubbleLabelIsActiveAnimationController.state}"),
+                              effects: getEffects(),
+                            ),
                           ),
                         ),
                       );
@@ -233,12 +249,9 @@ class BubbleLabelController extends StatelessWidget {
 //******************************************* */
 
 class _BubbleWidget extends StatelessWidget {
-  final double labelWidth, labelHeight;
   final Color? bubbleColor;
   final Widget? content;
   const _BubbleWidget({
-    required this.labelWidth,
-    required this.labelHeight,
     this.bubbleColor,
     this.content,
   });
@@ -246,8 +259,7 @@ class _BubbleWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: labelHeight,
-      width: labelWidth,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         color: bubbleColor ?? Colors.blue.shade300,
@@ -279,15 +291,15 @@ class BubbleLabelContent {
   /// Create a `BubbleLabelContent` to specify the widget to show inside
   /// the bubble as well as color, size, padding, and how it should
   /// behave when activated.
+  ///
+
+  final String? id;
+
   /// The background color to use for the bubble itself. If null, a
   /// default color will be used by `_BubbleWidget`.
   final Color? bubbleColor;
 
-  /// Width of the bubble in logical pixels.
-  final double labelWidth;
-
-  /// Height of the bubble in logical pixels.
-  final double labelHeight;
+  // Removed explicit label width and height; bubble adapts to child size.
 
   /// Vertical padding between the child widget and the bubble (floating
   /// offset in logical pixels).
@@ -305,59 +317,82 @@ class BubbleLabelContent {
   /// platforms (not just mobile).
   final bool shouldActivateOnLongPressOnAllPlatforms;
 
-  /// The global position (screen coordinates) of the widget that the
-  /// bubble is associated with. This is used to position the bubble.
-  final Offset childWidgetPosition;
+  // Removed explicit childWidgetPosition and childWidgetSize.
+  // Position and size are now derived from [childWidgetRenderBox] or
+  // [positionOverride]. Use the computed getters below.
 
-  /// The size of the widget that the bubble is associated with. This
-  /// is used for precise positioning and to calculate the bubble
-  /// position.
-  final Size childWidgetSize;
+  /// Optional render box of the widget the bubble is anchored to. If provided
+  /// and [positionOverride] is not set, the position and size will be derived
+  /// from this render box.
+  final RenderBox? childWidgetRenderBox;
+
+  /// Optional explicit position override. When provided, this value will be
+  /// used as the anchor position and any [childWidgetRenderBox] will be
+  /// ignored for positioning.
+  final Offset? positionOverride;
+
+  /// if true, tapping on the background overlay will dismiss the bubble.
+  final bool dismissOnBackgroundTap;
 
   /// Creates a `BubbleLabelContent`.
   ///
   /// The `bubbleColor`, `labelWidth`, and `labelHeight` parameters
   /// can be used to customize the appearance of the bubble.
   BubbleLabelContent({
+    String? id,
     this.bubbleColor,
     this.child,
     this.backgroundOverlayLayerOpacity,
-    this.labelWidth = 120,
-    this.labelHeight = 35,
-    this.floatingVerticalPadding = 45,
+    // label size is derived from child
+    double? verticalPadding,
     this.shouldActivateOnLongPressOnAllPlatforms = false,
-    this.childWidgetPosition = const Offset(0, 0),
-    this.childWidgetSize = const Size(100, 40),
-  });
+    this.childWidgetRenderBox,
+    this.positionOverride,
+    this.dismissOnBackgroundTap = false,
+  })  : id = id ?? Xid().toString(),
+        // Default: slightly above anchor (5 px)
+        floatingVerticalPadding = verticalPadding ?? 5.0;
+
+  // Computed anchor position based on override or render box
+  /// computed anchor position based on override or render box
+  Offset get anchorPosition =>
+      positionOverride ??
+      (childWidgetRenderBox != null
+          ? childWidgetRenderBox!.localToGlobal(Offset.zero)
+          : const Offset(0, 0));
+
+  /// Computed anchor size
+  Size get anchorSize => positionOverride != null
+      ? const Size(100, 40)
+      : (childWidgetRenderBox?.size ?? const Size(100, 40));
 
   /// Returns a copy of this `BubbleLabelContent` with the given fields
   /// replaced by new values. Any parameter that is `null` will preserve
   /// the original value from the current instance.
   BubbleLabelContent copyWith({
     Color? bubbleColor,
-    double? labelWidth,
-    double? labelHeight,
+    // size removed
     double? floatingVerticalPadding,
     Widget? child,
     double? backgroundOverlayLayerOpacity,
     bool? shouldActiveOnLongPressOnAllPlatforms,
-    Offset? childWidgetPosition,
-    Size? childWidgetSize,
+    String? id,
+    RenderBox? childWidgetRenderBox,
+    Offset? positionOverride,
   }) {
     return BubbleLabelContent(
+      id: id ?? this.id,
       bubbleColor: bubbleColor ?? this.bubbleColor,
-      labelWidth: labelWidth ?? this.labelWidth,
-      labelHeight: labelHeight ?? this.labelHeight,
-      floatingVerticalPadding:
-          floatingVerticalPadding ?? this.floatingVerticalPadding,
+      // size removed
+      verticalPadding: floatingVerticalPadding ?? this.floatingVerticalPadding,
       child: child ?? this.child,
       backgroundOverlayLayerOpacity:
           backgroundOverlayLayerOpacity ?? this.backgroundOverlayLayerOpacity,
       shouldActivateOnLongPressOnAllPlatforms:
           shouldActiveOnLongPressOnAllPlatforms ??
               shouldActivateOnLongPressOnAllPlatforms,
-      childWidgetPosition: childWidgetPosition ?? this.childWidgetPosition,
-      childWidgetSize: childWidgetSize ?? this.childWidgetSize,
+      childWidgetRenderBox: childWidgetRenderBox ?? this.childWidgetRenderBox,
+      positionOverride: positionOverride ?? this.positionOverride,
     );
   }
 }
@@ -389,6 +424,10 @@ class BubbleLabel {
   /// Returns `true` when a bubble is currently active and visible.
   static bool get isActive => controller.state != null;
 
+  /// Returns `true` when a bubble is currently active and visible.
+  static bool isActiveById(String? id) =>
+      id == null ? false : controller.state?.id == id;
+
   //-------------------------------------------------------------//
 
   /// Show a bubble overlay with the provided [bubbleContent].
@@ -403,12 +442,14 @@ class BubbleLabel {
     // log('BubbleLabel2.show() -  size: ${bubbleContent.childWidgetSize} - position: ${bubbleContent.childWidgetPosition}');
     //dismiss the previous bubble (just in case)
     if (BubbleLabel.isActive) {
-      await BubbleLabel.dismiss(animate: false);
+      // When replacing an active bubble, honor the caller's animate flag.
+      await BubbleLabel.dismiss(animate: animate);
     }
 
     if (animate) {
       BubbleLabel._animationController.state = true;
     }
+
     //set the new bubble content
     BubbleLabel.controller.update((state) => bubbleContent);
   }

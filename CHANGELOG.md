@@ -1,3 +1,7 @@
+## 2.0.0
+
+* Version 2.0.0
+
 ## 1.0.1 - Documentation and test improvements (2025-11-25)
 
 - Added comprehensive dartdoc comments for public API elements to improve discoverability and meet pub.dev documentation requirements.

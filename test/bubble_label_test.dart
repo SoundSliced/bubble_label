@@ -17,10 +17,6 @@ void main() {
     BubbleLabel.show(
       bubbleContent: BubbleLabelContent(
         child: const Text('Test bubble'),
-        childWidgetPosition: const Offset(10, 10),
-        childWidgetSize: const Size(50, 50),
-        labelWidth: 100,
-        labelHeight: 40,
       ),
       animate: false,
     );
@@ -33,8 +29,7 @@ void main() {
     // the bubble content should be visible in the widget tree
     expect(find.text('Test bubble'), findsOneWidget);
     // the size should match the provided values
-    expect(BubbleLabel.controller.state!.labelWidth, equals(100));
-    expect(BubbleLabel.controller.state!.labelHeight, equals(40));
+    // Bubble size adapts to child; we no longer assert explicit width/height
 
     // Dismiss the bubble and await completion; with animate=false this should
     // complete immediately (no timer) so awaiting won't hang the test.
@@ -60,16 +55,13 @@ void main() {
                     key: const Key('ui-show'),
                     onPressed: () {
                       final renderBox = context.findRenderObject() as RenderBox;
-                      final position = renderBox.localToGlobal(Offset.zero);
-                      final size = renderBox.size;
+                      // Obtain renderBox for automatic anchor derivation
 
                       BubbleLabel.show(
                         bubbleContent: BubbleLabelContent(
                           child: const Text('UI show'),
-                          childWidgetPosition: position,
-                          childWidgetSize: size,
-                          labelWidth: 120,
-                          labelHeight: 40,
+                          childWidgetRenderBox: renderBox,
+                          // bubble size adapts to its child
                         ),
                       );
                     },
@@ -116,10 +108,7 @@ void main() {
     BubbleLabel.show(
       bubbleContent: BubbleLabelContent(
         child: const Text('Opacity test'),
-        childWidgetPosition: const Offset(10, 10),
-        childWidgetSize: const Size(50, 50),
-        labelWidth: 120,
-        labelHeight: 36,
+        // bubble size adapts to its child
         bubbleColor: Colors.deepPurpleAccent,
         backgroundOverlayLayerOpacity: 0.41,
       ),
@@ -151,10 +140,7 @@ void main() {
     BubbleLabel.show(
       bubbleContent: BubbleLabelContent(
         child: const Text('Ignoring true'),
-        childWidgetPosition: const Offset(10, 10),
-        childWidgetSize: const Size(50, 50),
-        labelWidth: 100,
-        labelHeight: 40,
+        // bubble size adapts to its child
       ),
       animate: false,
     );
@@ -182,10 +168,7 @@ void main() {
     BubbleLabel.show(
       bubbleContent: BubbleLabelContent(
         child: const Text('Ignoring false'),
-        childWidgetPosition: const Offset(10, 10),
-        childWidgetSize: const Size(50, 50),
-        labelWidth: 100,
-        labelHeight: 40,
+        // bubble size adapts to its child
       ),
       animate: false,
     );
@@ -194,6 +177,50 @@ void main() {
     final ignoreBubble2 = tester
         .widget<IgnorePointer>(find.byKey(const Key('bubble_label_ignore')));
     expect(ignoreBubble2.ignoring, isFalse);
+  });
+
+  testWidgets('overlay tap dismissal frees pointer events',
+      (WidgetTester tester) async {
+    int counter = 0;
+    await tester.pumpWidget(BubbleLabelController(
+      child: MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  key: const Key('increment'),
+                  onPressed: () => counter++,
+                  child: const Text('Increment'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ));
+
+    // Show bubble with dismissOnBackgroundTap true
+    BubbleLabel.show(
+      bubbleContent: BubbleLabelContent(
+        child: const Text('Tap outside to dismiss'),
+        // No renderBox available in this minimal test; rely on defaults
+        dismissOnBackgroundTap: true,
+      ),
+      animate: false,
+    );
+    await tester.pumpAndSettle();
+    expect(BubbleLabel.isActive, isTrue);
+
+    // Tap the overlay gesture detector
+    await tester.tap(find.byKey(const Key('bubble_label_background_gesture')));
+    await tester.pumpAndSettle();
+    expect(BubbleLabel.isActive, isFalse);
+
+    // Tap underlying button; should increment now (pointer events pass through)
+    await tester.tap(find.byKey(const Key('increment')));
+    expect(counter, equals(1));
   });
 
   testWidgets('long press and animation timing behavior',
@@ -208,10 +235,7 @@ void main() {
                 BubbleLabel.show(
                   bubbleContent: BubbleLabelContent(
                     child: const Text('Long pressed!'),
-                    childWidgetPosition: const Offset(10, 10),
-                    childWidgetSize: const Size(50, 50),
-                    labelWidth: 110,
-                    labelHeight: 42,
+                    // bubble size adapts to its child
                     backgroundOverlayLayerOpacity: 0.21,
                   ),
                 );

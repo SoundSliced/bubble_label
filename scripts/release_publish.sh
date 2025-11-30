@@ -112,28 +112,6 @@ EOF
 
 # Function to commit pending changes before verification
 commit_changes() {
-    # Skip if the SKIP_GIT flag is set
-    if [[ "$SKIP_GIT" == true ]]; then
-        print_info "SKIP_GIT set: Skipping commit stage."
-        return 0
-    fi
-
-    # If not a git repo, either auto-init, prompt, or skip
-    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        if [[ "$AUTO_INIT_GIT" == true ]]; then
-            print_info "Auto-initializing git repository..."
-            git init
-        else
-            if confirm "Not a git repository. Initialize git now and commit changes?"; then
-                print_info "Initializing git repository..."
-                git init
-            else
-                print_warning "Not a git repository. Skipping commit stage. If you want to commit changes, initialize git or run the create_github_repo step." 
-                return 0
-            fi
-        fi
-    fi
-
     # Check if there are any changes to commit
     if ! git diff --quiet || ! git diff --cached --quiet || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
         print_info "Committing changes before verification..."
@@ -474,6 +452,7 @@ run_verification() {
         print_info "  - Update README.md to accurately describe the package, its features, and include example usage, with the updates made to the package (if any relevant)"
         print_info "  - Verify all MD files are up to date with the latest package information"
         print_info "  - Ensure README.md reflects the examples in the example/ directory"
+        print_info "  - unless already done, if there are any asset png or GIF or JPEG... files within the example folder, Add these screenshot files into the package's README (giving them the github path to the example folder, rather than a local path to it) to visually show a few examples of this package (basic and advanced usage) when the package is published to pub.dev."
         if confirm "Press enter when documentation is updated"; then
             print_success "Documentation updated via Copilot."
         fi
@@ -557,11 +536,6 @@ run_verification() {
 
 # Function to ensure git repo
 ensure_git_repo() {
-    if [[ "$SKIP_GIT" == true ]]; then
-        print_info "SKIP_GIT set: Skipping git initialization"
-        return 0
-    fi
-
     if [[ ! -d .git ]]; then
         print_info "Initializing git repository..."
         git init
@@ -604,23 +578,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 EOF
-        if [[ "$SKIP_GIT" == true ]]; then
-            print_info "SKIP_GIT set: Added LICENSE file, not committing because git operations are skipped."
-        else
-            git add LICENSE
-            git commit -m "Add MIT license"
-        fi
+        git add LICENSE
+        git commit -m "Add MIT license"
     fi
 }
 
 # Function to create GitHub repo
 create_github_repo() {
     print_info "Setting up GitHub repository..."
-
-    if [[ "$SKIP_GIT" == true ]]; then
-        print_warning "SKIP_GIT set: Skipping GitHub repository setup"
-        return 0
-    fi
 
     ensure_git_repo
 
@@ -729,12 +694,6 @@ issue_tracker: $issues" pubspec.yaml
 
 # Function to create GitHub release
 create_github_release() {
-
-    if [[ "$SKIP_GIT" == true ]]; then
-        print_warning "SKIP_GIT set: Skipping GitHub release creation"
-        return 0
-    fi
-
     print_info "Creating GitHub release..."
 
     # Create tag
@@ -755,49 +714,11 @@ create_github_release() {
     print_success "GitHub release created!"
 }
 
-# Default options
-AUTO_INIT_GIT=false
-SKIP_GIT=false
-
-# Parse command line arguments
-parse_args() {
-    for arg in "$@"; do
-        case "$arg" in
-            --init-git|-i)
-                AUTO_INIT_GIT=true
-                ;;
-            --skip-git)
-                SKIP_GIT=true
-                ;;
-            --help|-h)
-                echo "Usage: $0 [--init-git|-i] [--skip-git]"
-                echo "  --init-git, -i    Initialize a git repository automatically if missing"
-                echo "  --skip-git         Skip any git operations (commits, pushing, releases)"
-                exit 0
-                ;;
-            *)
-                # keep positional arguments for later if needed
-                ;;
-        esac
-    done
-}
-
 # Main script
 main() {
     echo "========================================"
     echo "Flutter Package Release & Publish Script"
     echo "========================================"
-
-    # Parse arguments
-    parse_args "$@"
-
-    # Report option flags
-    if [[ "$AUTO_INIT_GIT" == true ]]; then
-        print_info "AUTO_INIT_GIT enabled: Will initialize git automatically if missing."
-    fi
-    if [[ "$SKIP_GIT" == true ]]; then
-        print_info "SKIP_GIT enabled: Git operations will be skipped."
-    fi
 
     # Get package info
     get_package_info

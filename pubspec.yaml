@@ -3,8 +3,19 @@ description: A small Flutter package that shows a floating bubble label anchored
 license: MIT
 issue_tracker: https://github.com/SoundSliced/bubble_label/issues
 repository: https://github.com/SoundSliced/bubble_label
-version: 2.0.0
+version: 2.0.1
 homepage: https://github.com/SoundSliced/bubble_label
+
+screenshots:
+  - description: 'Bubble label example showing tap and long-press interactions with overlay and animation toggles'
+    path: example/assets/example.gif
+
+topics:
+  - ui
+  - overlay
+  - tooltip
+  - bubble
+  - widget
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

@@ -452,7 +452,7 @@ run_verification() {
         print_info "  - Update README.md to accurately describe the package, its features, and include example usage, with the updates made to the package (if any relevant)"
         print_info "  - Verify all MD files are up to date with the latest package information"
         print_info "  - Ensure README.md reflects the examples in the example/ directory"
-        print_info "  - unless already done, if there are any asset png or GIF or JPEG... files within the example folder, Add these screenshot files into the package's README (giving them the github path to the example folder, rather than a local path to it) to visually show a few examples of this package (basic and advanced usage) when the package is published to pub.dev."
+        print_info "  - unless already done, if there are any asset png or GIF or JPEG... files within the example folder, Add these screenshot files into the package's README and pubspec.yaml as appropriate (giving them the github path to the example folder, rather than a local path to it) to visually show a few examples of this package (basic and advanced usage) when the package is published to pub.dev."
         if confirm "Press enter when documentation is updated"; then
             print_success "Documentation updated via Copilot."
         fi

@@ -16,7 +16,7 @@ Add the package as a dependency in your app's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bubble_label: ^1.0.1
+  bubble_label: ^2.0.0
 ```
 
 > When using this package from outside the repository (published), replace the path dependency with a hosted version.
@@ -74,8 +74,9 @@ Key public pieces of the API:
 `BubbleLabelContent` fields include (defaults shown where applicable):
 - `child` — the content widget of the bubble.
 - `bubbleColor` — bubble background color.
-- `labelWidth`, `labelHeight` — size of the bubble.
-- `childWidgetPosition`, `childWidgetSize` — required to anchor the bubble to the child widget.
+- The bubble now adapts to the `child` size; explicit `labelWidth`/`labelHeight` are removed.
+- `childWidgetRenderBox` — optional `RenderBox` of the anchor widget; when provided the position/size will be derived from it.
+- `positionOverride` — optional explicit `Offset` to anchor the bubble directly.
 - `backgroundOverlayLayerOpacity` — opacity for the background overlay.
 
 Optional parameters you might find handy:
@@ -100,6 +101,8 @@ BubbleLabel.dismiss(animate: true);
 
 See the `example/` directory which demonstrates basic usage of the package.
 
+![Bubble label example GIF](https://raw.githubusercontent.com/SoundSliced/bubble_label/main/example/assets/example.gif)
+
 To run the example application locally:
 
 ```bash
@@ -109,6 +112,11 @@ flutter run
 
 Testing & debugging tip: The package exposes a small `controller` that can be inspected from tests to assert active bubble state or properties.
 
+### Important API changes in v2.0.0
+- Removed `labelWidth`/`labelHeight`: the bubble adapts to the `child` size automatically.
+- Removed `childWidgetPosition`/`childWidgetSize` — instead use `childWidgetRenderBox` (e.g., `context.findRenderObject()`) or `positionOverride` to anchor the bubble.
+- `BubbleLabelContent` now includes an `id` and `dismissOnBackgroundTap` to enable automatic background tap dismissals.
+
 Advanced usage
 ```
 // Wrap your app and customize pointer behaviour
@@ -117,32 +125,36 @@ BubbleLabelController(
   child: MaterialApp(...),
 );
 
-// Show a bubble with no overlay and a custom vertical offset
-BubbleLabel.show(
-  bubbleContent: BubbleLabelContent(
-    child: Text('No overlay'),
-    childWidgetPosition: position,
-    childWidgetSize: size,
-    labelWidth: 180,
-    labelHeight: 44,
-    bubbleColor: Colors.green,
-    backgroundOverlayLayerOpacity: 0.0,
-    floatingVerticalPadding: 10,
-  ),
-  animate: true,
-);
+// Show a bubble using a render box anchor (recommended when calling from a widget)
+Builder(builder: (context) {
+  final renderBox = context.findRenderObject() as RenderBox;
+  BubbleLabel.show(
+    bubbleContent: BubbleLabelContent(
+      child: const Text('No overlay'),
+      childWidgetRenderBox: renderBox,
+      bubbleColor: Colors.green,
+      backgroundOverlayLayerOpacity: 0.0,
+      verticalPadding: 10, // 10 px above the anchor
+    ),
+    animate: true,
+  );
+});
 
-// Show a bubble triggered from a long press (e.g., inside a GestureDetector)
+// Show a bubble with an explicit screen offset anchor (use `positionOverride`)
 BubbleLabel.show(
   bubbleContent: BubbleLabelContent(
-    child: Text('Long press bubble'),
-    childWidgetPosition: position,
-    childWidgetSize: size,
-    shouldActivateOnLongPressOnAllPlatforms: true,
+    child: const Text('Position override bubble'),
+    positionOverride: Offset(200, 150), // anchor at (200,150) screen coords
   ),
 );
 ```
 ## Changelog
+
+### 2.0.0 (2025-11-30)
+
+- Major API update: rendering and anchoring simplified via `childWidgetRenderBox` and `positionOverride`; automatic bubble sizing to `child`.
+- Added `id` to `BubbleLabelContent` and `dismissOnBackgroundTap` option to easily dismiss overlay by tapping.
+- Updated example app and tests to reflect the new API and control toggles.
 
 ### 1.0.1 (2025-11-25)
 

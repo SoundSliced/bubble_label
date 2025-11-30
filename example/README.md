@@ -20,4 +20,8 @@ flutter run
 	- Show a bubble without overlay and a long-press area to show the bubble
 	- Buttons to `Dismiss` (immediate) and `Dismiss (animated)` are provided to hide the bubble.
 
-This example mirrors the code used in the package README and tests to make it easy to explore the package.
+This example mirrors the code used in the package README and tests and illustrates the recommended usage patterns – using `childWidgetRenderBox` or `positionOverride` – to make it easy to explore the package.
+
+Example animation preview:
+
+![Example gif preview](https://raw.githubusercontent.com/SoundSliced/bubble_label/main/example/assets/example.gif)

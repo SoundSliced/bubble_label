@@ -1,6 +1,6 @@
 ## 2.0.1
 
-* Version 2.0.1
+* updated pubspec.yaml and README files
 
 ## 2.0.0 - 2025-11-30
 

@@ -4,9 +4,17 @@ import 'package:bubble_label/bubble_label.dart';
 
 void main() {
   testWidgets('show and dismiss BubbleLabel', (WidgetTester tester) async {
+    final anchorKey = GlobalKey();
     await tester.pumpWidget(BubbleLabelController(
-      child: const MaterialApp(
-        home: Scaffold(body: Center(child: Text('content'))),
+      child: MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Container(
+              key: anchorKey,
+              child: const Text('content'),
+            ),
+          ),
+        ),
       ),
     ));
 
@@ -19,6 +27,7 @@ void main() {
         child: const Text('Test bubble'),
       ),
       animate: false,
+      anchorKey: anchorKey,
     );
 
     // Wait for the next microtask to have controller updated
@@ -41,7 +50,33 @@ void main() {
     expect(BubbleLabel.isActive, isFalse);
   });
 
+  testWidgets(
+      'show asserts when both anchorKey and positionOverride are provided',
+      (WidgetTester tester) async {
+    final anchorKey = GlobalKey();
+    await tester.pumpWidget(BubbleLabelController(
+      child: const MaterialApp(
+        home: Scaffold(body: Center(child: Text('content'))),
+      ),
+    ));
+
+    await tester.pumpAndSettle();
+
+    expect(
+      () async => BubbleLabel.show(
+        bubbleContent: BubbleLabelContent(
+          child: const Text('Both provided'),
+          positionOverride: const Offset(0, 0),
+        ),
+        anchorKey: anchorKey,
+        animate: false,
+      ),
+      throwsAssertionError,
+    );
+  });
+
   testWidgets('dismiss via UI button', (WidgetTester tester) async {
+    final showButtonKey = GlobalKey();
     // Build a widget with a show and dismiss button like the example
     await tester.pumpWidget(BubbleLabelController(
       child: MaterialApp(
@@ -50,24 +85,19 @@ void main() {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Builder(builder: (context) {
-                  return ElevatedButton(
-                    key: const Key('ui-show'),
-                    onPressed: () {
-                      final renderBox = context.findRenderObject() as RenderBox;
-                      // Obtain renderBox for automatic anchor derivation
-
-                      BubbleLabel.show(
-                        bubbleContent: BubbleLabelContent(
-                          child: const Text('UI show'),
-                          childWidgetRenderBox: renderBox,
-                          // bubble size adapts to its child
-                        ),
-                      );
-                    },
-                    child: const Text('Show'),
-                  );
-                }),
+                ElevatedButton(
+                  key: showButtonKey,
+                  onPressed: () {
+                    BubbleLabel.show(
+                      bubbleContent: BubbleLabelContent(
+                        child: const Text('UI show'),
+                        // bubble size adapts to its child
+                      ),
+                      anchorKey: showButtonKey,
+                    );
+                  },
+                  child: const Text('Show'),
+                ),
                 const SizedBox(height: 8),
                 ElevatedButton(
                   key: const Key('ui-dismiss'),
@@ -82,7 +112,7 @@ void main() {
     ));
 
     // Tap show
-    await tester.tap(find.byKey(const Key('ui-show')));
+    await tester.tap(find.byKey(showButtonKey));
     await tester.pumpAndSettle();
     expect(BubbleLabel.isActive, isTrue);
     expect(find.text('UI show'), findsOneWidget);
@@ -96,9 +126,17 @@ void main() {
   testWidgets(
       'bubble sets overlay opacity and bubble color in controller state',
       (WidgetTester tester) async {
+    final anchorKey = GlobalKey();
     await tester.pumpWidget(BubbleLabelController(
-      child: const MaterialApp(
-        home: Scaffold(body: Center(child: Text('content'))),
+      child: MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Container(
+              key: anchorKey,
+              child: const Text('content'),
+            ),
+          ),
+        ),
       ),
     ));
 
@@ -113,6 +151,7 @@ void main() {
         backgroundOverlayLayerOpacity: 0.41,
       ),
       animate: false,
+      anchorKey: anchorKey,
     );
 
     await tester.pumpAndSettle();
@@ -130,10 +169,18 @@ void main() {
 
   testWidgets('bubble ignorePointer reflects controller setting',
       (WidgetTester tester) async {
+    final anchorKey = GlobalKey();
     // With shouldIgnorePointer=true (default)
     await tester.pumpWidget(BubbleLabelController(
-      child: const MaterialApp(
-        home: Scaffold(body: Center(child: Text('content'))),
+      child: MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Container(
+              key: anchorKey,
+              child: const Text('content'),
+            ),
+          ),
+        ),
       ),
     ));
 
@@ -143,6 +190,7 @@ void main() {
         // bubble size adapts to its child
       ),
       animate: false,
+      anchorKey: anchorKey,
     );
     await tester.pumpAndSettle();
 
@@ -159,8 +207,15 @@ void main() {
     // Now verify that when we use a BubbleLabelController with shouldIgnorePointer=false
     await tester.pumpWidget(BubbleLabelController(
       shouldIgnorePointer: false,
-      child: const MaterialApp(
-        home: Scaffold(body: Center(child: Text('content'))),
+      child: MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Container(
+              key: anchorKey,
+              child: const Text('content'),
+            ),
+          ),
+        ),
       ),
     ));
 
@@ -171,6 +226,7 @@ void main() {
         // bubble size adapts to its child
       ),
       animate: false,
+      anchorKey: anchorKey,
     );
     await tester.pumpAndSettle();
 
@@ -182,6 +238,7 @@ void main() {
   testWidgets('overlay tap dismissal frees pointer events',
       (WidgetTester tester) async {
     int counter = 0;
+    final anchorKey = GlobalKey();
     await tester.pumpWidget(BubbleLabelController(
       child: MaterialApp(
         home: Scaffold(
@@ -189,6 +246,7 @@ void main() {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                SizedBox(key: anchorKey, width: 1, height: 1),
                 ElevatedButton(
                   key: const Key('increment'),
                   onPressed: () => counter++,
@@ -205,10 +263,10 @@ void main() {
     BubbleLabel.show(
       bubbleContent: BubbleLabelContent(
         child: const Text('Tap outside to dismiss'),
-        // No renderBox available in this minimal test; rely on defaults
         dismissOnBackgroundTap: true,
       ),
       animate: false,
+      anchorKey: anchorKey,
     );
     await tester.pumpAndSettle();
     expect(BubbleLabel.isActive, isTrue);
@@ -225,12 +283,13 @@ void main() {
 
   testWidgets('long press and animation timing behavior',
       (WidgetTester tester) async {
+    final longPressAnchorKey = GlobalKey();
     await tester.pumpWidget(BubbleLabelController(
       child: MaterialApp(
         home: Scaffold(
           body: Center(
             child: GestureDetector(
-              key: const Key('longpress-test'),
+              key: longPressAnchorKey,
               onLongPress: () {
                 BubbleLabel.show(
                   bubbleContent: BubbleLabelContent(
@@ -238,6 +297,7 @@ void main() {
                     // bubble size adapts to its child
                     backgroundOverlayLayerOpacity: 0.21,
                   ),
+                  anchorKey: longPressAnchorKey,
                 );
               },
               child: const Text('Long press me'),
@@ -248,7 +308,7 @@ void main() {
     ));
 
     // simulate long press
-    await tester.longPress(find.byKey(const Key('longpress-test')));
+    await tester.longPress(find.byKey(longPressAnchorKey));
     await tester.pumpAndSettle();
 
     expect(BubbleLabel.isActive, isTrue);

@@ -108,6 +108,61 @@ EOF
             print_info "Added '*.sh' to .pubignore"
         fi
     fi
+    
+    # Ensure build artifacts and other critical exclusions are present
+    local needs_update=false
+    
+    # Check for critical patterns
+    if ! grep -q '^build/' "$file"; then
+        needs_update=true
+    fi
+    if ! grep -q '^\.dart_tool/' "$file"; then
+        needs_update=true
+    fi
+    if ! grep -q '^example/build/' "$file"; then
+        needs_update=true
+    fi
+    
+    # If critical patterns are missing, append them
+    if [[ "$needs_update" == true ]]; then
+        print_info "Adding build artifact exclusions to .pubignore..."
+        
+        # Add newline if file doesn't end with one
+        if [[ -n "$(tail -c 1 "$file" 2>/dev/null)" ]]; then
+            echo "" >> "$file"
+        fi
+        
+        # Append comprehensive exclusions
+        cat >> "$file" <<'EOF'
+
+# Exclude build artifacts and cache directories
+build/
+.dart_tool/
+.packages
+
+# Exclude example build artifacts
+example/build/
+example/.dart_tool/
+example/.packages
+
+# Exclude IDE and editor files
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# Exclude OS files
+.DS_Store
+Thumbs.db
+
+# Exclude test cache
+test/.test_cache/
+.test_cache/
+EOF
+        print_success "Added comprehensive exclusions to .pubignore"
+    fi
 }
 
 # Function to commit pending changes before verification
@@ -452,7 +507,7 @@ run_verification() {
         print_info "  - Update README.md to accurately describe the package, its features, and include example usage, with the updates made to the package (if any relevant)"
         print_info "  - Verify all MD files are up to date with the latest package information"
         print_info "  - Ensure README.md reflects the examples in the example/ directory"
-        print_info "  - unless already done, if there are any asset png or GIF or JPEG... files within the example folder, Add these screenshot files into the package's README and pubspec.yaml as appropriate (giving them the github path to the example folder, rather than a local path to it) to visually show a few examples of this package (basic and advanced usage) when the package is published to pub.dev."
+        print_info "  - unless already done, if there are any asset png or GIF or JPEG... files within the example folder, Add these screenshot files into the package's README (giving them the github path to the example folder, rather than a local path to it) to visually show a few examples of this package (basic and advanced usage) when the package is published to pub.dev."
         if confirm "Press enter when documentation is updated"; then
             print_success "Documentation updated via Copilot."
         fi

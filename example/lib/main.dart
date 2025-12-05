@@ -101,7 +101,7 @@ class _ExampleAppState extends State<ExampleApp> {
 
 /// A simple page with buttons that call `BubbleLabel.show` to display
 /// sample bubbles so users can try out the package behavior.
-class ExamplePage extends StatelessWidget {
+class ExamplePage extends StatefulWidget {
   /// Whether to animate show/dismiss operations in this example page.
   final bool animate;
 
@@ -111,9 +111,19 @@ class ExamplePage extends StatelessWidget {
   /// Creates an `ExamplePage` used in the example app. It exposes two
   /// configurable options: [animate] and [useOverlay].
   const ExamplePage({super.key, this.animate = true, this.useOverlay = true});
+
+  @override
+  State<ExamplePage> createState() => _ExamplePageState();
+}
+
+class _ExamplePageState extends State<ExamplePage> {
+  final noOverlayKey = GlobalKey();
+  final bubbleKey = GlobalKey();
+  final longPressKey = GlobalKey();
+  final longPressButtonKey = GlobalKey();
+
   @override
   Widget build(BuildContext context) {
-    // We put a few sample actions to demonstrate package features
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const AlwaysScrollableScrollPhysics(),
@@ -121,195 +131,172 @@ class ExamplePage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.start,
         spacing: 12,
         children: [
-          // A button that shows a bubble without overlay when tapped
-          Builder(builder: (context) {
-            return ElevatedButton(
-              key: const Key('tap-show-no-overlay'),
-              onPressed: () {
-                final renderBox = context.findRenderObject() as RenderBox;
-                final bubbleContent = BubbleLabelContent(
+          ElevatedButton(
+            key: noOverlayKey,
+            onPressed: () {
+              final bubbleContent = BubbleLabelContent(
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Text('bubble 10px above - with no overlay'),
+                ),
+                bubbleColor: Colors.green,
+                backgroundOverlayLayerOpacity: 0.0,
+                verticalPadding: 10,
+              );
+
+              BubbleLabel.show(
+                bubbleContent: bubbleContent,
+                animate: widget.animate,
+                anchorKey: noOverlayKey,
+              );
+            },
+            child: const Text('Tap: show without overlay'),
+          ),
+          ElevatedButton(
+            key: bubbleKey,
+            onPressed: () {
+              BubbleLabel.show(
+                bubbleContent: BubbleLabelContent(
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Text('bubble 10px above - with no overlay'),
+                    child: Text('Hello bubble!'),
                   ),
-                  childWidgetRenderBox: renderBox,
-                  // bubble size adapts to its child
-                  bubbleColor: Colors.green,
-                  backgroundOverlayLayerOpacity: 0.0,
-                  verticalPadding: 10,
-                );
-
-                BubbleLabel.show(
-                  bubbleContent: bubbleContent,
-                  animate: animate,
-                );
-              },
-              child: const Text('Tap: show without overlay'),
-            );
-          }),
-
-          // A button that shows a bubble when tapped
-          Builder(builder: (context) {
-            return ElevatedButton(
-              key: const Key('tap-show'),
-              onPressed: () {
-                final renderBox = context.findRenderObject() as RenderBox;
-                BubbleLabel.show(
-                  bubbleContent: BubbleLabelContent(
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text('Hello bubble!'),
-                    ),
-                    childWidgetRenderBox: renderBox,
-                    // bubble size adapts to its child
-                    bubbleColor: Colors.deepPurpleAccent,
-                    backgroundOverlayLayerOpacity: useOverlay ? 0.3 : 0.0,
-                  ),
-                  animate: animate,
-                );
-              },
-              child: const Text('Tap to show bubble'),
-            );
-          }),
-
-          // An area that shows a bubble when long-pressed
-          Builder(builder: (context) {
-            return GestureDetector(
-              key: const Key('longpress-area'),
-              onLongPress: () {
-                final renderBox = context.findRenderObject() as RenderBox;
-                final bubbleContent = BubbleLabelContent(
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Text('Long press bubble'),
-                  ),
-                  childWidgetRenderBox: renderBox,
-                  verticalPadding: 25,
-                  bubbleColor: Colors.orangeAccent,
-                  backgroundOverlayLayerOpacity: useOverlay ? 0.25 : 0.0,
-                  shouldActivateOnLongPressOnAllPlatforms: true,
-                  dismissOnBackgroundTap: true,
-                );
-
-                BubbleLabel.show(
-                  bubbleContent: bubbleContent,
-                  animate: animate,
-                );
-              },
-              child: Container(
-                key: const Key('longpress-container'),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.blueGrey.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blueGrey.shade200),
+                  bubbleColor: Colors.deepPurpleAccent,
+                  backgroundOverlayLayerOpacity: widget.useOverlay ? 0.3 : 0.0,
                 ),
-                height: 90,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: const [
-                    Text(
-                      'Long-press here to show bubble 25px above',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Tap on background to dismiss',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
+                animate: widget.animate,
+                anchorKey: bubbleKey,
+              );
+            },
+            child: const Text('Tap to show bubble'),
+          ),
+          GestureDetector(
+            key: longPressKey,
+            onLongPress: () {
+              final bubbleContent = BubbleLabelContent(
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Text('Long press bubble'),
                 ),
+                verticalPadding: 25,
+                bubbleColor: Colors.orangeAccent,
+                backgroundOverlayLayerOpacity: widget.useOverlay ? 0.25 : 0.0,
+                shouldActivateOnLongPressOnAllPlatforms: true,
+                dismissOnBackgroundTap: true,
+              );
+
+              BubbleLabel.show(
+                bubbleContent: bubbleContent,
+                animate: widget.animate,
+                anchorKey: longPressKey,
+              );
+            },
+            child: Container(
+              key: const Key('longpress-container'),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blueGrey.shade200),
               ),
-            );
-          }),
-
-          // a bubble with a button as content
-          Builder(builder: (context) {
-            return GestureDetector(
-              key: const Key('longpress-area-button'),
-              onLongPress: () {
-                final renderBox = context.findRenderObject() as RenderBox;
-                final bubbleContent = BubbleLabelContent(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          debugPrint('Button inside bubble tapped');
-                        },
-                        splashColor: Colors.blue,
-                        highlightColor: Colors.blue,
-                        borderRadius: BorderRadius.circular(4),
-                        child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.black12),
-                            ),
-                            padding: const EdgeInsets.all(6.0),
-                            child: Text('Tap')),
+              height: 90,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: const [
+                  Text(
+                    'Long-press here to show bubble 25px above',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Tap on background to dismiss',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          GestureDetector(
+            key: longPressButtonKey,
+            onLongPress: () {
+              final bubbleContent = BubbleLabelContent(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        debugPrint('Button inside bubble tapped');
+                      },
+                      splashColor: Colors.blue,
+                      highlightColor: Colors.blue,
+                      borderRadius: BorderRadius.circular(4),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.black12),
+                        ),
+                        padding: const EdgeInsets.all(6.0),
+                        child: const Text('Tap'),
                       ),
                     ),
                   ),
-                  childWidgetRenderBox: renderBox,
-                  bubbleColor: Colors.greenAccent,
-                  backgroundOverlayLayerOpacity: useOverlay ? 0.25 : 0.0,
-                  shouldActivateOnLongPressOnAllPlatforms: true,
-                  dismissOnBackgroundTap: true,
-                );
+                ),
+                bubbleColor: Colors.greenAccent,
+                backgroundOverlayLayerOpacity: widget.useOverlay ? 0.25 : 0.0,
+                shouldActivateOnLongPressOnAllPlatforms: true,
+              );
 
-                BubbleLabel.show(
-                  bubbleContent: bubbleContent,
-                  animate: animate,
-                );
-              },
-              child: Container(
-                key: const Key('longpress-container-button'),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.blueGrey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blueGrey.shade300),
-                ),
-                height: 90,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: const [
-                    Text(
-                      'Long-press area',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'A bubble with a button inside',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
+              BubbleLabel.show(
+                bubbleContent: bubbleContent,
+                animate: widget.animate,
+                anchorKey: longPressButtonKey,
+              );
+            },
+            child: Container(
+              key: const Key('longpress-container-button'),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blueGrey.shade300),
               ),
-            );
-          }),
+              height: 90,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: const [
+                  Text(
+                    'Long-press area',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'A bubble with a button inside',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -1,3 +1,10 @@
+## 3.0.0 - 2025-12-05
+
+### Enhancements and BREAKING CHANGE for boilerplate reduction purposes
+
+- BoilerPlate reduction: `BubbleLabel.show` now automatically resolves the anchor `RenderBox` when user passes an `anchorKey`, so manual `context.findRenderObject()` calls are no longer necessary.
+- Added stricter input validation: each call to `BubbleLabel.show` must provide exactly one anchor source—either supply an `anchorKey` to derive the widget's `RenderBox` *or* give a `BubbleLabelContent.positionOverride`. Passing both at the same time is disallowed and will assert during development.
+
 ## 2.0.2 - 2025-11-30
 
 ### Fixes
@@ -21,7 +28,7 @@
 
 ### Migration notes
 
-- If your code used the previous `childWidgetPosition`/`childWidgetSize` fields, switch to providing a `RenderBox` using `childWidgetRenderBox` (e.g., using `context.findRenderObject()` in a `Builder`) or supply a `positionOverride: Offset(x,y)` to place the bubble explicitly.
+- If your code used the previous `childWidgetPosition`/`childWidgetSize` fields, switch to providing a `RenderBox` using `childWidgetRenderBox` (e.g., using `context.findRenderObject()` in a `Builder`), supply a `positionOverride: Offset(x,y)`, or use the new `anchorKey` option on `BubbleLabel.show` to resolve the anchor automatically.
 - Remove any code that passed `labelWidth`/`labelHeight` — the bubble automatically sizes to the `child` content. Use `Container`, `SizedBox`, or other layout widgets inside the `child` to control the bubble size if you need explicit dimensions.
 - If needed, you can still horizontally/vertically offset the bubble via the `floatingVerticalPadding` parameter in `BubbleLabelContent`.
 

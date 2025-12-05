@@ -321,10 +321,11 @@ class BubbleLabelContent {
   // Position and size are now derived from [childWidgetRenderBox] or
   // [positionOverride]. Use the computed getters below.
 
-  /// Optional render box of the widget the bubble is anchored to. If provided
-  /// and [positionOverride] is not set, the position and size will be derived
-  /// from this render box.
-  final RenderBox? childWidgetRenderBox;
+  /// Optional render box of the widget the bubble is anchored to. This is
+  /// managed internally; callers provide an [anchorKey] when calling
+  /// `BubbleLabel.show` so they no longer need to supply the render box
+  /// themselves.
+  final RenderBox? _childWidgetRenderBox;
 
   /// Optional explicit position override. When provided, this value will be
   /// used as the anchor position and any [childWidgetRenderBox] will be
@@ -338,6 +339,22 @@ class BubbleLabelContent {
   ///
   /// The `bubbleColor`, `labelWidth`, and `labelHeight` parameters
   /// can be used to customize the appearance of the bubble.
+  BubbleLabelContent._internal({
+    String? id,
+    this.bubbleColor,
+    this.child,
+    this.backgroundOverlayLayerOpacity,
+    // label size is derived from child
+    double? verticalPadding,
+    this.shouldActivateOnLongPressOnAllPlatforms = false,
+    RenderBox? childWidgetRenderBox,
+    this.positionOverride,
+    this.dismissOnBackgroundTap = false,
+  })  : id = id ?? Xid().toString(),
+        // Default: slightly above anchor (5 px)
+        floatingVerticalPadding = verticalPadding ?? 5.0,
+        _childWidgetRenderBox = childWidgetRenderBox;
+
   BubbleLabelContent({
     String? id,
     this.bubbleColor,
@@ -346,44 +363,42 @@ class BubbleLabelContent {
     // label size is derived from child
     double? verticalPadding,
     this.shouldActivateOnLongPressOnAllPlatforms = false,
-    this.childWidgetRenderBox,
     this.positionOverride,
     this.dismissOnBackgroundTap = false,
   })  : id = id ?? Xid().toString(),
-        // Default: slightly above anchor (5 px)
-        floatingVerticalPadding = verticalPadding ?? 5.0;
+        floatingVerticalPadding = verticalPadding ?? 5.0,
+        _childWidgetRenderBox = null;
 
   // Computed anchor position based on override or render box
+  RenderBox? get _renderBox => _childWidgetRenderBox;
+
   /// computed anchor position based on override or render box
   Offset get anchorPosition =>
       positionOverride ??
-      (childWidgetRenderBox != null
-          ? childWidgetRenderBox!.localToGlobal(Offset.zero)
+      (_renderBox != null
+          ? _renderBox!.localToGlobal(Offset.zero)
           : const Offset(0, 0));
 
   /// Computed anchor size
   Size get anchorSize => positionOverride != null
       ? const Size(100, 40)
-      : (childWidgetRenderBox?.size ?? const Size(100, 40));
+      : (_renderBox?.size ?? const Size(100, 40));
 
   /// Returns a copy of this `BubbleLabelContent` with the given fields
   /// replaced by new values. Any parameter that is `null` will preserve
   /// the original value from the current instance.
   BubbleLabelContent copyWith({
     Color? bubbleColor,
-    // size removed
     double? floatingVerticalPadding,
     Widget? child,
     double? backgroundOverlayLayerOpacity,
     bool? shouldActiveOnLongPressOnAllPlatforms,
     String? id,
-    RenderBox? childWidgetRenderBox,
     Offset? positionOverride,
   }) {
-    return BubbleLabelContent(
+    return BubbleLabelContent._internal(
       id: id ?? this.id,
       bubbleColor: bubbleColor ?? this.bubbleColor,
-      // size removed
       verticalPadding: floatingVerticalPadding ?? this.floatingVerticalPadding,
       child: child ?? this.child,
       backgroundOverlayLayerOpacity:
@@ -391,8 +406,24 @@ class BubbleLabelContent {
       shouldActivateOnLongPressOnAllPlatforms:
           shouldActiveOnLongPressOnAllPlatforms ??
               shouldActivateOnLongPressOnAllPlatforms,
-      childWidgetRenderBox: childWidgetRenderBox ?? this.childWidgetRenderBox,
+      childWidgetRenderBox: _childWidgetRenderBox,
       positionOverride: positionOverride ?? this.positionOverride,
+      dismissOnBackgroundTap: dismissOnBackgroundTap,
+    );
+  }
+
+  BubbleLabelContent _withRenderBox(RenderBox? renderBox) {
+    return BubbleLabelContent._internal(
+      id: id,
+      bubbleColor: bubbleColor,
+      child: child,
+      backgroundOverlayLayerOpacity: backgroundOverlayLayerOpacity,
+      verticalPadding: floatingVerticalPadding,
+      shouldActivateOnLongPressOnAllPlatforms:
+          shouldActivateOnLongPressOnAllPlatforms,
+      childWidgetRenderBox: renderBox,
+      positionOverride: positionOverride,
+      dismissOnBackgroundTap: dismissOnBackgroundTap,
     );
   }
 }
@@ -435,11 +466,21 @@ class BubbleLabel {
   /// If `animate` is true (default) the opening animation will be
   /// played. If another bubble is active, it is dismissed first and
   /// then the new one is shown.
+  ///
+  /// `anchorKey` can be provided so the bubble automatically derives
+  /// the anchor `RenderBox` without requiring callers to manually call
+  /// `context.findRenderObject()`.
   static Future<void> show({
     required BubbleLabelContent bubbleContent,
     bool animate = true,
+    GlobalKey? anchorKey,
   }) async {
-    // log('BubbleLabel2.show() -  size: ${bubbleContent.childWidgetSize} - position: ${bubbleContent.childWidgetPosition}');
+    assert(
+      (bubbleContent.positionOverride != null) ^ (anchorKey != null),
+      'Provide exactly one of an anchorKey or a positionOverride so the bubble can compute its anchor.',
+    );
+    var content = bubbleContent;
+
     //dismiss the previous bubble (just in case)
     if (BubbleLabel.isActive) {
       // When replacing an active bubble, honor the caller's animate flag.
@@ -450,8 +491,14 @@ class BubbleLabel {
       BubbleLabel._animationController.state = true;
     }
 
+    final renderBox = _resolveAnchorRenderBox(anchorKey);
+
+    if (renderBox != null && renderBox != content._renderBox) {
+      content = content._withRenderBox(renderBox);
+    }
+
     //set the new bubble content
-    BubbleLabel.controller.update((state) => bubbleContent);
+    BubbleLabel.controller.update((state) => content);
   }
 
   //-------------------------------------------------------------//
@@ -476,4 +523,22 @@ class BubbleLabel {
   }
 
   //-------------------------------------------------------------//
+
+  static RenderBox? _resolveAnchorRenderBox(GlobalKey? anchorKey) {
+    if (anchorKey == null) {
+      return null;
+    }
+
+    final context = anchorKey.currentContext;
+    if (context == null) {
+      return null;
+    }
+
+    final renderObject = context.findRenderObject();
+    if (renderObject is RenderBox) {
+      return renderObject;
+    }
+
+    return null;
+  }
 }

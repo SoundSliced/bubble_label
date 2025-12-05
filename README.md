@@ -23,7 +23,7 @@ Add the package as a dependency in your app's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bubble_label: ^2.0.2
+  bubble_label: ^3.0.0
 ```
 
 > When using this package from outside the repository (published), replace the path dependency with a hosted version.
@@ -73,7 +73,7 @@ Example app features
 Key public pieces of the API:
 
 - `BubbleLabelController` — a top-level widget that must wrap the application and allows the bubble to render above other widgets.
-- `BubbleLabel.show(bubbleContent: BubbleLabelContent(...))` — show the bubble overlay with provided content and parameters.
+- `BubbleLabel.show(...)` — show the bubble overlay with provided content and parameters. Passing an `anchorKey` lets the bubble automatically derive the anchor `RenderBox`, so you can skip manual `context.findRenderObject()` calls; alternatively you can supply a `BubbleLabelContent.positionOverride`. Exactly one of those anchor inputs must be provided—supplying both is disallowed.
 - `BubbleLabel.dismiss()` — dismiss the bubble.
 - `BubbleLabel.isActive` — boolean property indicating whether a bubble is currently active.
 - `BubbleLabel.controller` — access to the injected controller instance for programmatic inspection or updates (advanced use).
@@ -82,7 +82,7 @@ Key public pieces of the API:
 - `child` — the content widget of the bubble.
 - `bubbleColor` — bubble background color.
 - The bubble now adapts to the `child` size; explicit `labelWidth`/`labelHeight` are removed.
-- `childWidgetRenderBox` — optional `RenderBox` of the anchor widget; when provided the position/size will be derived from it.
+- `_childWidgetRenderBox` — internal storage for the anchor widget's `RenderBox` when an `anchorKey` is supplied to `BubbleLabel.show`. The bubble size/position still honors `positionOverride` when you need to anchor to specific coordinates instead.
 - `positionOverride` — optional explicit `Offset` to anchor the bubble directly.
 - `backgroundOverlayLayerOpacity` — opacity for the background overlay.
 
@@ -116,7 +116,7 @@ Testing & debugging tip: The package exposes a small `controller` that can be in
 
 ### Important API changes in v2.0.0
 - Removed `labelWidth`/`labelHeight`: the bubble adapts to the `child` size automatically.
-- Removed `childWidgetPosition`/`childWidgetSize` — instead use `childWidgetRenderBox` (e.g., `context.findRenderObject()`) or `positionOverride` to anchor the bubble.
+- Removed `childWidgetPosition`/`childWidgetSize` — instead rely on the anchor automatically resolved from the `anchorKey` you pass to `BubbleLabel.show`, or fall back to `positionOverride` when specifying explicit screen coordinates.
 - `BubbleLabelContent` now includes an `id` and `dismissOnBackgroundTap` to enable automatic background tap dismissals.
 
 Advanced usage
@@ -127,20 +127,24 @@ BubbleLabelController(
   child: MaterialApp(...),
 );
 
-// Show a bubble using a render box anchor (recommended when calling from a widget)
-Builder(builder: (context) {
-  final renderBox = context.findRenderObject() as RenderBox;
-  BubbleLabel.show(
-    bubbleContent: BubbleLabelContent(
-      child: const Text('No overlay'),
-      childWidgetRenderBox: renderBox,
-      bubbleColor: Colors.green,
-      backgroundOverlayLayerOpacity: 0.0,
-      verticalPadding: 10, // 10 px above the anchor
-    ),
-    animate: true,
-  );
-});
+// Show a bubble automatically anchored to the widget that triggered it
+final showButtonKey = GlobalKey();
+ElevatedButton(
+  key: showButtonKey,
+  onPressed: () {
+    BubbleLabel.show(
+      bubbleContent: BubbleLabelContent(
+        child: const Text('No overlay'),
+        bubbleColor: Colors.green,
+        backgroundOverlayLayerOpacity: 0.0,
+        verticalPadding: 10, // 10 px above the anchor
+      ),
+      anchorKey: showButtonKey,
+      animate: true,
+    );
+  },
+  child: const Text('Show without overlay'),
+);
 
 // Show a bubble with an explicit screen offset anchor (use `positionOverride`)
 BubbleLabel.show(
@@ -150,6 +154,8 @@ BubbleLabel.show(
   ),
 );
 ```
+
+Keep each `GlobalKey` as a long-lived field (for example, on your widget's state) and re-use it when calling `BubbleLabel.show`. That way the anchor `RenderBox` is stable, you avoid extra builders, and the bubble can always resolve the correct position.
 ## Changelog
 
 ### 2.0.0 (2025-11-30)

@@ -3,7 +3,7 @@ description: A small Flutter package that shows a floating bubble label anchored
 license: MIT
 issue_tracker: https://github.com/SoundSliced/bubble_label/issues
 repository: https://github.com/SoundSliced/bubble_label
-version: 3.0.0
+version: 3.0.1
 homepage: https://github.com/SoundSliced/bubble_label
 
 screenshots:

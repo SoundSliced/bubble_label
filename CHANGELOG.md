@@ -1,3 +1,6 @@
+## 3.0.1 - 2025-12-05
+- example.gif size reduced to pass Pub.dev score Documentation analysis
+
 ## 3.0.0 - 2025-12-05
 
 ### Enhancements and BREAKING CHANGE for boilerplate reduction purposes

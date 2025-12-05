@@ -35,3 +35,4 @@ Thumbs.db
 # Exclude test cache
 test/.test_cache/
 .test_cache/
+*.sh

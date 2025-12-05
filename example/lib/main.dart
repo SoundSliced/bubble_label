@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bubble_label/bubble_label.dart';
+import 'package:s_toggle/s_toggle.dart';
 
 void main() => runApp(const ExampleApp());
 
@@ -38,39 +39,83 @@ class _ExampleAppState extends State<ExampleApp> {
           body: Column(
             spacing: 45,
             children: [
+              /// Configuration toggles
               Padding(
                 padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: SwitchListTile(
-                        title: const Text('Allow bubble pointer events'),
-                        value: shouldIgnorePointer == false,
-                        onChanged: (val) {
-                          setState(() => shouldIgnorePointer = !val);
-                        },
+                child: SizedBox(
+                  height: 80,
+                  child: Column(
+                    spacing: 8,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      /// Toggle to allow/disallow bubble pointer events
+                      Flexible(
+                        child: Row(
+                          spacing: 8,
+                          children: [
+                            const Text('Allow bubble pointer events'),
+                            SToggle(
+                              size: 40,
+                              onColor: Colors.green,
+                              offColor: Colors.red,
+                              value: shouldIgnorePointer == false,
+                              onChange: (val) {
+                                setState(() => shouldIgnorePointer = !val);
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Expanded(
-                      child: SwitchListTile(
-                        title: const Text('Animate'),
-                        value: animate,
-                        onChanged: (val) => setState(() => animate = val),
+
+                      /// Toggle to enable/disable animation
+                      Flexible(
+                        child: Row(
+                          spacing: 8,
+                          children: [
+                            const Text('Animate'),
+                            SToggle(
+                              size: 40,
+                              onColor: Colors.green,
+                              offColor: Colors.red,
+                              value: animate,
+                              onChange: (val) => setState(() => animate = val),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Expanded(
-                      child: SwitchListTile(
-                        title: const Text('Use overlay'),
-                        value: useOverlay,
-                        onChanged: (val) => setState(() => useOverlay = val),
+
+                      /// Toggle to enable/disable overlay
+                      Flexible(
+                        child: Row(
+                          spacing: 8,
+                          children: [
+                            const Text('Use overlay'),
+                            SToggle(
+                              size: 40,
+                              onColor: Colors.green,
+                              offColor: Colors.red,
+                              value: useOverlay,
+                              onChange: (val) =>
+                                  setState(() => useOverlay = val),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
+
+              /// The main example page with buttons to show bubbles.
               Flexible(
-                child: ExamplePage(animate: animate, useOverlay: useOverlay),
+                child: ExamplePage(
+                  animate: animate,
+                  useOverlay: useOverlay,
+                  shouldIgnorePointer: shouldIgnorePointer,
+                ),
               ),
+
+              /// Dismiss buttons
               Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: Row(
@@ -108,9 +153,17 @@ class ExamplePage extends StatefulWidget {
   /// Whether the example shows a background overlay while the bubble is active.
   final bool useOverlay;
 
+  /// Whether the background overlay should ignore pointer events.
+  final bool shouldIgnorePointer;
+
   /// Creates an `ExamplePage` used in the example app. It exposes two
   /// configurable options: [animate] and [useOverlay].
-  const ExamplePage({super.key, this.animate = true, this.useOverlay = true});
+  const ExamplePage({
+    super.key,
+    this.animate = true,
+    this.useOverlay = true,
+    this.shouldIgnorePointer = true,
+  });
 
   @override
   State<ExamplePage> createState() => _ExamplePageState();
@@ -120,7 +173,8 @@ class _ExamplePageState extends State<ExamplePage> {
   final noOverlayKey = GlobalKey();
   final bubbleKey = GlobalKey();
   final longPressKey = GlobalKey();
-  final longPressButtonKey = GlobalKey();
+  final bubbleButtonKey = GlobalKey();
+  final positionOverrideButtonKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -131,27 +185,7 @@ class _ExamplePageState extends State<ExamplePage> {
         mainAxisAlignment: MainAxisAlignment.start,
         spacing: 12,
         children: [
-          ElevatedButton(
-            key: noOverlayKey,
-            onPressed: () {
-              final bubbleContent = BubbleLabelContent(
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Text('bubble 10px above - with no overlay'),
-                ),
-                bubbleColor: Colors.green,
-                backgroundOverlayLayerOpacity: 0.0,
-                verticalPadding: 10,
-              );
-
-              BubbleLabel.show(
-                bubbleContent: bubbleContent,
-                animate: widget.animate,
-                anchorKey: noOverlayKey,
-              );
-            },
-            child: const Text('Tap: show without overlay'),
-          ),
+          /// A simple button that shows a bubble when tapped.
           ElevatedButton(
             key: bubbleKey,
             onPressed: () {
@@ -159,7 +193,8 @@ class _ExamplePageState extends State<ExamplePage> {
                 bubbleContent: BubbleLabelContent(
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Text('Hello bubble!'),
+                    child: Text('Hello bubble!',
+                        style: TextStyle(color: Colors.white)),
                   ),
                   bubbleColor: Colors.deepPurpleAccent,
                   backgroundOverlayLayerOpacity: widget.useOverlay ? 0.3 : 0.0,
@@ -168,8 +203,36 @@ class _ExamplePageState extends State<ExamplePage> {
                 anchorKey: bubbleKey,
               );
             },
-            child: const Text('Tap to show bubble'),
+            child: const Text('show bubble'),
           ),
+
+          /// A simple button that shows a bubble without overlay when tapped.
+          ElevatedButton(
+            key: noOverlayKey,
+            onPressed: () {
+              final bubbleContent = BubbleLabelContent(
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Text(
+                    'bubble 25px above Anchor widget',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                bubbleColor: Colors.green,
+                backgroundOverlayLayerOpacity: 0.0,
+                verticalPadding: 25,
+              );
+
+              BubbleLabel.show(
+                bubbleContent: bubbleContent,
+                animate: widget.animate,
+                anchorKey: noOverlayKey,
+              );
+            },
+            child: const Text('Bubble 25px above'),
+          ),
+
+          /// A long-press area that shows a bubble when long-pressed.
           GestureDetector(
             key: longPressKey,
             onLongPress: () {
@@ -178,8 +241,7 @@ class _ExamplePageState extends State<ExamplePage> {
                   padding: EdgeInsets.symmetric(horizontal: 8.0),
                   child: Text('Long press bubble'),
                 ),
-                verticalPadding: 25,
-                bubbleColor: Colors.orangeAccent,
+                bubbleColor: const Color.fromARGB(255, 239, 246, 35),
                 backgroundOverlayLayerOpacity: widget.useOverlay ? 0.25 : 0.0,
                 shouldActivateOnLongPressOnAllPlatforms: true,
                 dismissOnBackgroundTap: true,
@@ -205,7 +267,7 @@ class _ExamplePageState extends State<ExamplePage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: const [
                   Text(
-                    'Long-press here to show bubble 25px above',
+                    'Long-press to show bubble',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -225,9 +287,11 @@ class _ExamplePageState extends State<ExamplePage> {
               ),
             ),
           ),
+
+          /// A long-press area that shows a bubble with a button inside when long-pressed.
           GestureDetector(
-            key: longPressButtonKey,
-            onLongPress: () {
+            key: bubbleButtonKey,
+            onTap: () {
               final bubbleContent = BubbleLabelContent(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -247,7 +311,7 @@ class _ExamplePageState extends State<ExamplePage> {
                           border: Border.all(color: Colors.black12),
                         ),
                         padding: const EdgeInsets.all(6.0),
-                        child: const Text('Tap'),
+                        child: const Text('button'),
                       ),
                     ),
                   ),
@@ -255,16 +319,18 @@ class _ExamplePageState extends State<ExamplePage> {
                 bubbleColor: Colors.greenAccent,
                 backgroundOverlayLayerOpacity: widget.useOverlay ? 0.25 : 0.0,
                 shouldActivateOnLongPressOnAllPlatforms: true,
+                dismissOnBackgroundTap:
+                    widget.shouldIgnorePointer ? false : true,
               );
 
               BubbleLabel.show(
                 bubbleContent: bubbleContent,
                 animate: widget.animate,
-                anchorKey: longPressButtonKey,
+                anchorKey: bubbleButtonKey,
               );
             },
             child: Container(
-              key: const Key('longpress-container-button'),
+              key: const Key('tap-container-button'),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.blueGrey.shade100,
@@ -277,7 +343,7 @@ class _ExamplePageState extends State<ExamplePage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: const [
                   Text(
-                    'Long-press area',
+                    'Tap widget',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -295,6 +361,30 @@ class _ExamplePageState extends State<ExamplePage> {
                   ),
                 ],
               ),
+            ),
+          ),
+
+          /// A simple button that shows a bubble at a custom position when tapped.
+          ElevatedButton(
+            key: positionOverrideButtonKey,
+            onPressed: () {
+              BubbleLabel.show(
+                bubbleContent: BubbleLabelContent(
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text('Position override bubble at (400, 150)'),
+                  ),
+                  bubbleColor: Colors.tealAccent,
+                  positionOverride: const Offset(400, 150),
+                  backgroundOverlayLayerOpacity: widget.useOverlay ? 0.35 : 0.0,
+                  dismissOnBackgroundTap: true,
+                ),
+                animate: widget.animate,
+              );
+            },
+            child: const Text(
+              'Bubble\nOffset(400, 150)',
+              textAlign: TextAlign.center,
             ),
           ),
         ],

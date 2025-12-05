@@ -10,6 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  s_toggle: ^2.0.1
   bubble_label:
     path: ../
 

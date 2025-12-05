@@ -355,6 +355,7 @@ class BubbleLabelContent {
         floatingVerticalPadding = verticalPadding ?? 5.0,
         _childWidgetRenderBox = childWidgetRenderBox;
 
+  /// Creates a `BubbleLabelContent`.
   BubbleLabelContent({
     String? id,
     this.bubbleColor,

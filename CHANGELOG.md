@@ -1,3 +1,69 @@
+## 4.0.0 - 2025-12-12
+
+### BREAKING CHANGES
+
+- **Removed `BubbleLabelController` widget requirement**: The package now uses Flutter's native `Overlay` system, eliminating the need to wrap your app with `BubbleLabelController`. Simply use `MaterialApp`, `CupertinoApp`, or any widget tree with an `Overlay`.
+
+- **Migrated from Stack-based to Overlay-based rendering**: The bubble now uses native `OverlayEntry` for better performance and cleaner architecture.
+
+- **Moved `shouldIgnorePointer` from `BubbleLabelController` to `BubbleLabelContent`**: Instead of setting `shouldIgnorePointer` on the controller widget, you now set it per-bubble in `BubbleLabelContent`. This allows different bubbles to have different pointer behaviors.
+
+### Migration from v3.x
+
+Before (v3.x):
+```dart
+BubbleLabelController(
+  shouldIgnorePointer: false,
+  child: MaterialApp(...),
+);
+```
+
+After (v4.0.0):
+```dart
+MaterialApp(...); // No wrapper needed!
+
+BubbleLabel.show(
+  bubbleContent: BubbleLabelContent(
+    child: Text('Hello'),
+    shouldIgnorePointer: false, // Now set per-bubble
+  ),
+  anchorKey: myKey,
+);
+```
+
+### New Features
+
+- **`shouldIgnorePointer` property on `BubbleLabelContent`**: Control whether the bubble content receives pointer events. When `true` (default), taps pass through; when `false`, interactive widgets inside the bubble (e.g., buttons) can be tapped.
+
+- **`BubbleLabel.updateContent()` method**: Reactively update bubble properties while it's displayed without dismissing and re-showing. Useful for toggling `shouldIgnorePointer` or changing colors on the fly.
+
+- **`BubbleLabel.tapRegionGroupId`**: Exposes the TapRegion group ID so external widgets can join the bubble's "inside" detection. Wrap widgets with `TapRegion(groupId: BubbleLabel.tapRegionGroupId, child: ...)` to prevent them from triggering `dismissOnBackgroundTap`.
+
+- **`onTapInside` and `onTapOutside` callbacks**: Optional callbacks in `BubbleLabelContent` that fire when taps are detected inside or outside the bubble. Useful for visual feedback, analytics, or custom logic.
+
+### Improvements
+
+- **Responsive bubble positioning**: The bubble now dynamically tracks the anchor widget's position. When the layout changes (e.g., a snackbar appears and shifts content), the bubble follows its anchor widget instead of staying at the original position.
+
+- **TapRegion inside/outside detection**: Switched from `IgnorePointer` to `AbsorbPointer` so TapRegion correctly detects whether taps are inside or outside the bubble even when pointer events are ignored.
+
+- **Cancellable dismiss timer**: Replaced `await Future.delayed()` with a cancellable `Timer` to prevent race conditions when multiple dismiss calls happen in quick succession.
+
+- **No BuildContext across async gaps**: Overlay resolution now happens before any async operations to avoid lint warnings and potential issues with disposed widgets.
+
+- **Removed debug prints**: All `debugPrint` statements removed from the library for cleaner production logs.
+
+- **Hybrid validation system**: Uses debug assertions in development mode and FlutterError in production for better overlay detection feedback.
+
+### Example App Updates
+
+- Updated to work without `BubbleLabelController` wrapper.
+- Added visual feedback banner showing "Tap INSIDE" or "Tap OUTSIDE" when tapping bubbles with callbacks enabled.
+- Toggle widgets are now wrapped with `TapRegion` using the bubble's group ID to demonstrate the feature.
+- Long-press bubble now demonstrates `onTapInside` and `onTapOutside` callbacks.
+
+---
+
 ## 3.0.1 - 2025-12-05
 - example.gif size reduced to pass Pub.dev score Documentation analysis
 

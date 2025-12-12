@@ -5,8 +5,8 @@ import 'package:bubble_label/bubble_label.dart';
 void main() {
   testWidgets('show and dismiss BubbleLabel', (WidgetTester tester) async {
     final anchorKey = GlobalKey();
-    await tester.pumpWidget(BubbleLabelController(
-      child: MaterialApp(
+    await tester.pumpWidget(
+      MaterialApp(
         home: Scaffold(
           body: Center(
             child: Container(
@@ -16,7 +16,7 @@ void main() {
           ),
         ),
       ),
-    ));
+    );
 
     // Initially nothing should be shown
     expect(BubbleLabel.isActive, isFalse);
@@ -54,11 +54,11 @@ void main() {
       'show asserts when both anchorKey and positionOverride are provided',
       (WidgetTester tester) async {
     final anchorKey = GlobalKey();
-    await tester.pumpWidget(BubbleLabelController(
-      child: const MaterialApp(
+    await tester.pumpWidget(
+      const MaterialApp(
         home: Scaffold(body: Center(child: Text('content'))),
       ),
-    ));
+    );
 
     await tester.pumpAndSettle();
 
@@ -78,8 +78,8 @@ void main() {
   testWidgets('dismiss via UI button', (WidgetTester tester) async {
     final showButtonKey = GlobalKey();
     // Build a widget with a show and dismiss button like the example
-    await tester.pumpWidget(BubbleLabelController(
-      child: MaterialApp(
+    await tester.pumpWidget(
+      MaterialApp(
         home: Scaffold(
           body: Center(
             child: Column(
@@ -109,7 +109,7 @@ void main() {
           ),
         ),
       ),
-    ));
+    );
 
     // Tap show
     await tester.tap(find.byKey(showButtonKey));
@@ -127,8 +127,8 @@ void main() {
       'bubble sets overlay opacity and bubble color in controller state',
       (WidgetTester tester) async {
     final anchorKey = GlobalKey();
-    await tester.pumpWidget(BubbleLabelController(
-      child: MaterialApp(
+    await tester.pumpWidget(
+      MaterialApp(
         home: Scaffold(
           body: Center(
             child: Container(
@@ -138,7 +138,7 @@ void main() {
           ),
         ),
       ),
-    ));
+    );
 
     expect(BubbleLabel.isActive, isFalse);
 
@@ -167,12 +167,12 @@ void main() {
     expect(BubbleLabel.isActive, isFalse);
   });
 
-  testWidgets('bubble ignorePointer reflects controller setting',
+  testWidgets('bubble ignorePointer reflects default behavior',
       (WidgetTester tester) async {
     final anchorKey = GlobalKey();
-    // With shouldIgnorePointer=true (default)
-    await tester.pumpWidget(BubbleLabelController(
-      child: MaterialApp(
+    // Bubble ignores pointer events by default
+    await tester.pumpWidget(
+      MaterialApp(
         home: Scaffold(
           body: Center(
             child: Container(
@@ -182,7 +182,7 @@ void main() {
           ),
         ),
       ),
-    ));
+    );
 
     BubbleLabel.show(
       bubbleContent: BubbleLabelContent(
@@ -200,47 +200,22 @@ void main() {
     // background overlay defaults to ignoring pointer events
     expect(ignoreBackground.ignoring, isTrue);
 
-    final ignoreBubble = tester
-        .widget<IgnorePointer>(find.byKey(const Key('bubble_label_ignore')));
-    expect(ignoreBubble.ignoring, isTrue);
+    // Default shouldIgnorePointer is true, so AbsorbPointer should exist
+    final absorbBubble = tester
+        .widget<AbsorbPointer>(find.byKey(const Key('bubble_label_absorb')));
+    expect(absorbBubble.absorbing, isTrue);
 
-    // Now verify that when we use a BubbleLabelController with shouldIgnorePointer=false
-    await tester.pumpWidget(BubbleLabelController(
-      shouldIgnorePointer: false,
-      child: MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Container(
-              key: anchorKey,
-              child: const Text('content'),
-            ),
-          ),
-        ),
-      ),
-    ));
-
-    // show again
-    BubbleLabel.show(
-      bubbleContent: BubbleLabelContent(
-        child: const Text('Ignoring false'),
-        // bubble size adapts to its child
-      ),
-      animate: false,
-      anchorKey: anchorKey,
-    );
+    // Properly dismiss to avoid pending timer issues
+    await BubbleLabel.dismiss(animate: false);
     await tester.pumpAndSettle();
-
-    final ignoreBubble2 = tester
-        .widget<IgnorePointer>(find.byKey(const Key('bubble_label_ignore')));
-    expect(ignoreBubble2.ignoring, isFalse);
   });
 
   testWidgets('overlay tap dismissal frees pointer events',
       (WidgetTester tester) async {
     int counter = 0;
     final anchorKey = GlobalKey();
-    await tester.pumpWidget(BubbleLabelController(
-      child: MaterialApp(
+    await tester.pumpWidget(
+      MaterialApp(
         home: Scaffold(
           body: Center(
             child: Column(
@@ -257,7 +232,7 @@ void main() {
           ),
         ),
       ),
-    ));
+    );
 
     // Show bubble with dismissOnBackgroundTap true
     BubbleLabel.show(
@@ -271,8 +246,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(BubbleLabel.isActive, isTrue);
 
-    // Tap the overlay gesture detector
-    await tester.tap(find.byKey(const Key('bubble_label_background_gesture')));
+    // Tap somewhere outside the bubble's TapRegion to trigger dismissal.
+    // Tapping at the screen edge should be outside the bubble.
+    await tester.tapAt(const Offset(10, 10));
     await tester.pumpAndSettle();
     expect(BubbleLabel.isActive, isFalse);
 
@@ -284,8 +260,8 @@ void main() {
   testWidgets('long press and animation timing behavior',
       (WidgetTester tester) async {
     final longPressAnchorKey = GlobalKey();
-    await tester.pumpWidget(BubbleLabelController(
-      child: MaterialApp(
+    await tester.pumpWidget(
+      MaterialApp(
         home: Scaffold(
           body: Center(
             child: GestureDetector(
@@ -305,7 +281,7 @@ void main() {
           ),
         ),
       ),
-    ));
+    );
 
     // simulate long press
     await tester.longPress(find.byKey(longPressAnchorKey));
@@ -325,5 +301,165 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
     expect(BubbleLabel.isActive, isFalse);
+  });
+
+  testWidgets('updateContent updates bubble properties while active',
+      (WidgetTester tester) async {
+    final anchorKey = GlobalKey();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Container(
+              key: anchorKey,
+              child: const Text('content'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Show bubble with shouldIgnorePointer true
+    BubbleLabel.show(
+      bubbleContent: BubbleLabelContent(
+        child: const Text('Update test'),
+        shouldIgnorePointer: true,
+      ),
+      animate: false,
+      anchorKey: anchorKey,
+    );
+    await tester.pumpAndSettle();
+
+    expect(BubbleLabel.isActive, isTrue);
+    expect(BubbleLabel.controller.state!.shouldIgnorePointer, isTrue);
+
+    // Update to shouldIgnorePointer false
+    final updated = BubbleLabel.updateContent(shouldIgnorePointer: false);
+    await tester.pumpAndSettle();
+
+    expect(updated, isTrue);
+    expect(BubbleLabel.controller.state!.shouldIgnorePointer, isFalse);
+
+    await BubbleLabel.dismiss(animate: false);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('updateContent returns false when bubble is not active',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: Center(child: Text('content'))),
+      ),
+    );
+
+    expect(BubbleLabel.isActive, isFalse);
+
+    // This should return false since no bubble is active
+    final updated = BubbleLabel.updateContent(shouldIgnorePointer: false);
+
+    expect(updated, isFalse);
+    expect(BubbleLabel.isActive, isFalse);
+  });
+
+  testWidgets('tapRegionGroupId is accessible', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: Center(child: Text('content'))),
+      ),
+    );
+
+    // tapRegionGroupId should be a consistent non-null value
+    final groupId = BubbleLabel.tapRegionGroupId;
+    expect(groupId, isNotNull);
+    expect(groupId, equals(BubbleLabel.tapRegionGroupId)); // same value
+  });
+
+  testWidgets('shouldIgnorePointer controls AbsorbPointer presence',
+      (WidgetTester tester) async {
+    final anchorKey = GlobalKey();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Container(
+              key: anchorKey,
+              child: const Text('content'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Show with shouldIgnorePointer false (no AbsorbPointer should exist)
+    BubbleLabel.show(
+      bubbleContent: BubbleLabelContent(
+        child: const Text('Pointer enabled'),
+        shouldIgnorePointer: false,
+      ),
+      animate: false,
+      anchorKey: anchorKey,
+    );
+    await tester.pumpAndSettle();
+
+    // When shouldIgnorePointer is false, AbsorbPointer should not exist
+    expect(find.byKey(const Key('bubble_label_absorb')), findsNothing);
+
+    await BubbleLabel.dismiss(animate: false);
+    await tester.pumpAndSettle();
+
+    // Now show with shouldIgnorePointer true (AbsorbPointer should exist)
+    BubbleLabel.show(
+      bubbleContent: BubbleLabelContent(
+        child: const Text('Pointer disabled'),
+        shouldIgnorePointer: true,
+      ),
+      animate: false,
+      anchorKey: anchorKey,
+    );
+    await tester.pumpAndSettle();
+
+    // When shouldIgnorePointer is true, AbsorbPointer should exist
+    final absorbBubble = tester
+        .widget<AbsorbPointer>(find.byKey(const Key('bubble_label_absorb')));
+    expect(absorbBubble.absorbing, isTrue);
+
+    await BubbleLabel.dismiss(animate: false);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('onTapInside and onTapOutside callbacks are stored in content',
+      (WidgetTester tester) async {
+    final anchorKey = GlobalKey();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Container(
+              key: anchorKey,
+              child: const Text('content'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    BubbleLabel.show(
+      bubbleContent: BubbleLabelContent(
+        child: const Text('Callback test'),
+        onTapInside: (details) {},
+        onTapOutside: (details) {},
+      ),
+      animate: false,
+      anchorKey: anchorKey,
+    );
+    await tester.pumpAndSettle();
+
+    expect(BubbleLabel.isActive, isTrue);
+    expect(BubbleLabel.controller.state!.onTapInside, isNotNull);
+    expect(BubbleLabel.controller.state!.onTapOutside, isNotNull);
+
+    await BubbleLabel.dismiss(animate: false);
+    await tester.pumpAndSettle();
   });
 }

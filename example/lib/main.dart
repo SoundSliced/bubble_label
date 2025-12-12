@@ -28,19 +28,56 @@ class _ExampleAppState extends State<ExampleApp> {
   /// Toggle to enable a background overlay behind the bubble.
   bool useOverlay = true;
 
+  /// Visual feedback message for tap inside/outside detection
+  String? _tapFeedback;
+
+  void _showTapFeedback(String message, Color color) {
+    setState(() => _tapFeedback = message);
+    // Auto-clear after 1.5 seconds
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) setState(() => _tapFeedback = null);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BubbleLabelController(
-      shouldIgnorePointer: shouldIgnorePointer,
-      child: MaterialApp(
-        title: 'Bubble Label Example',
-        home: Scaffold(
-          appBar: AppBar(title: const Text('Bubble Label Example')),
-          body: Column(
-            spacing: 45,
-            children: [
-              /// Configuration toggles
-              Padding(
+    return MaterialApp(
+      title: 'Bubble Label Example',
+      home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Bubble Label Example'),
+          // Show tap feedback in the app bar
+          bottom: _tapFeedback != null
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(30),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    color: _tapFeedback!.contains('INSIDE')
+                        ? Colors.green.shade100
+                        : Colors.orange.shade100,
+                    child: Text(
+                      _tapFeedback!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _tapFeedback!.contains('INSIDE')
+                            ? Colors.green.shade800
+                            : Colors.orange.shade800,
+                      ),
+                    ),
+                  ),
+                )
+              : null,
+        ),
+        body: Column(
+          spacing: 45,
+          children: [
+            /// Configuration toggles - wrapped in TapRegion to be considered
+            /// "inside" the bubble (tapping here won't dismiss the bubble)
+            TapRegion(
+              groupId: BubbleLabel.tapRegionGroupId,
+              child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: SizedBox(
                   height: 80,
@@ -61,6 +98,10 @@ class _ExampleAppState extends State<ExampleApp> {
                               value: shouldIgnorePointer == false,
                               onChange: (val) {
                                 setState(() => shouldIgnorePointer = !val);
+                                // Update the active bubble if one is showing
+                                BubbleLabel.updateContent(
+                                  shouldIgnorePointer: shouldIgnorePointer,
+                                );
                               },
                             ),
                           ],
@@ -105,39 +146,40 @@ class _ExampleAppState extends State<ExampleApp> {
                   ),
                 ),
               ),
+            ),
 
-              /// The main example page with buttons to show bubbles.
-              Flexible(
-                child: ExamplePage(
-                  animate: animate,
-                  useOverlay: useOverlay,
-                  shouldIgnorePointer: shouldIgnorePointer,
-                ),
+            /// The main example page with buttons to show bubbles.
+            Flexible(
+              child: ExamplePage(
+                animate: animate,
+                useOverlay: useOverlay,
+                shouldIgnorePointer: shouldIgnorePointer,
+                onTapFeedback: _showTapFeedback,
               ),
+            ),
 
-              /// Dismiss buttons
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: 15,
-                  children: [
-                    ElevatedButton(
-                      key: const Key('dismiss-button'),
-                      onPressed: () => BubbleLabel.dismiss(animate: false),
-                      child: const Text('Dismiss'),
-                    ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      key: const Key('dismiss-button-animate'),
-                      onPressed: () => BubbleLabel.dismiss(animate: true),
-                      child: const Text('Dismiss (animated)'),
-                    ),
-                  ],
-                ),
+            /// Dismiss buttons
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                spacing: 15,
+                children: [
+                  ElevatedButton(
+                    key: const Key('dismiss-button'),
+                    onPressed: () => BubbleLabel.dismiss(animate: false),
+                    child: const Text('Dismiss'),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    key: const Key('dismiss-button-animate'),
+                    onPressed: () => BubbleLabel.dismiss(animate: true),
+                    child: const Text('Dismiss (animated)'),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -156,6 +198,9 @@ class ExamplePage extends StatefulWidget {
   /// Whether the background overlay should ignore pointer events.
   final bool shouldIgnorePointer;
 
+  /// Callback to show visual feedback for tap inside/outside.
+  final void Function(String message, Color color)? onTapFeedback;
+
   /// Creates an `ExamplePage` used in the example app. It exposes two
   /// configurable options: [animate] and [useOverlay].
   const ExamplePage({
@@ -163,6 +208,7 @@ class ExamplePage extends StatefulWidget {
     this.animate = true,
     this.useOverlay = true,
     this.shouldIgnorePointer = true,
+    this.onTapFeedback,
   });
 
   @override
@@ -239,12 +285,25 @@ class _ExamplePageState extends State<ExamplePage> {
               final bubbleContent = BubbleLabelContent(
                 child: const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Text('Long press bubble'),
+                  child: Text('Long press bubble - tap inside/outside!'),
                 ),
                 bubbleColor: const Color.fromARGB(255, 239, 246, 35),
                 backgroundOverlayLayerOpacity: widget.useOverlay ? 0.25 : 0.0,
                 shouldActivateOnLongPressOnAllPlatforms: true,
                 dismissOnBackgroundTap: true,
+                // Visual feedback callbacks for tap detection
+                onTapInside: (details) {
+                  widget.onTapFeedback?.call(
+                    '✅ Tap INSIDE bubble detected!',
+                    Colors.green,
+                  );
+                },
+                onTapOutside: (details) {
+                  widget.onTapFeedback?.call(
+                    '⚠️ Tap OUTSIDE bubble detected!',
+                    Colors.orange,
+                  );
+                },
               );
 
               BubbleLabel.show(
@@ -319,8 +378,8 @@ class _ExamplePageState extends State<ExamplePage> {
                 bubbleColor: Colors.greenAccent,
                 backgroundOverlayLayerOpacity: widget.useOverlay ? 0.25 : 0.0,
                 shouldActivateOnLongPressOnAllPlatforms: true,
-                dismissOnBackgroundTap:
-                    widget.shouldIgnorePointer ? false : true,
+                dismissOnBackgroundTap: true,
+                shouldIgnorePointer: widget.shouldIgnorePointer,
               );
 
               BubbleLabel.show(
@@ -380,6 +439,7 @@ class _ExamplePageState extends State<ExamplePage> {
                   dismissOnBackgroundTap: true,
                 ),
                 animate: widget.animate,
+                context: context,
               );
             },
             child: const Text(

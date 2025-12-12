@@ -1,271 +1,302 @@
-//import 'package:overlay_support/overlay_support.dart';
+import 'dart:async';
 
-import 'package:assorted_layout_widgets/assorted_layout_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:sizer/sizer.dart';
 import 'package:soundsliced_dart_extensions/soundsliced_dart_extensions.dart';
 import 'package:states_rebuilder_extended/states_rebuilder_extended.dart';
 import 'package:xid/xid.dart';
 
-/// A widget that hosts the bubble label overlay and provides the
-/// layout and animations for displaying the bubble on top of the app
-/// content.
-///
-/// Insert `BubbleLabelController` near the root of your widget tree
-/// (for example inside `MaterialApp`) and the `BubbleLabel` API
-/// will use it to render an overlay containing the bubble.
-class BubbleLabelController extends StatelessWidget {
-  /// The content over which the bubble will be displayed. This widget
-  /// typically represents the main page of your application where
-  /// interactive child widgets live.
-  final Widget child;
+//******************************************* */
 
-  /// Controls whether the bubble overlay should ignore pointer events.
-  ///
-  /// When `true` (the default) the bubble overlay will not intercept
-  /// touch or pointer events, so underlying widgets remain interactive.
+/// Stores the anchor key for dynamic position tracking
+GlobalKey? _activeAnchorKey;
+
+/// Internal widget that renders the bubble content with animations.
+class _BubbleBuildWidget extends StatefulWidget {
+  final BubbleLabelContent content;
+  final List<Effect<dynamic>> effects;
   final bool shouldIgnorePointer;
 
-  /// Creates a [BubbleLabelController].
-  ///
-  /// The [child] parameter must not be null and represents the content
-  /// over which the bubble overlay will be rendered.
-  const BubbleLabelController({
-    super.key,
-
-    /// Whether the bubble overlay should ignore pointer events.
-    ///
-    /// Defaults to `true`.
-    this.shouldIgnorePointer = true,
-
-    /// The widget over which the bubble is displayed.
-    ///
-    /// Typically the app's page content is passed as `child`.
-    required this.child,
+  const _BubbleBuildWidget({
+    required this.content,
+    required this.effects,
+    required this.shouldIgnorePointer,
   });
 
-  /// Returns the animation effects to apply when the bubble appears
-  /// and disappears.
-  ///
-  /// This is used internally by the controller to animate the bubble.
-  List<Effect<dynamic>> getEffects() {
-    List<Effect<dynamic>> effects = [];
+  @override
+  State<_BubbleBuildWidget> createState() => _BubbleBuildWidgetState();
+}
 
-    if (_bubbleLabelIsActiveAnimationController.state != null) {
-      if (_bubbleLabelIsActiveAnimationController.state!) {
-        effects = [
-          FadeEffect(
-            begin: 0,
-            end: 1,
-            // delay: 0.1.sec,
-            duration: 0.2.sec,
-            curve: Curves.easeIn,
-          ),
-          MoveEffect(
-            begin: Offset(0, 5),
-            end: Offset(0, -1),
-            duration: 0.2.sec,
-            curve: Curves.easeIn,
-          )
-        ];
-      } else {
-        effects = [
-          MoveEffect(
-            begin: Offset(0, -1),
-            end: Offset(0, 5),
-            duration: 0.2.sec,
-            curve: Curves.easeOutBack,
-          ),
-          FadeEffect(
-            begin: 1,
-            end: 0,
-            delay: 0.1.sec,
-            duration: 0.2.sec,
-            curve: Curves.easeOutBack,
-          ),
-        ];
+class _BubbleBuildWidgetState extends State<_BubbleBuildWidget>
+    with WidgetsBindingObserver {
+  Offset _currentPosition = Offset.zero;
+  Size _currentSize = const Size(100, 40);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _updatePosition();
+    // Schedule a post-frame callback to update position after layout
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updatePosition();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    // Screen size/orientation changed
+    _schedulePositionUpdate();
+  }
+
+  void _schedulePositionUpdate() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updatePosition();
+    });
+  }
+
+  void _updatePosition() {
+    final newPosition = _computeAnchorPosition();
+    final newSize = _computeAnchorSize();
+
+    if (newPosition != _currentPosition || newSize != _currentSize) {
+      setState(() {
+        _currentPosition = newPosition;
+        _currentSize = newSize;
+      });
+    }
+  }
+
+  Offset _computeAnchorPosition() {
+    // If position override is set, use it
+    if (widget.content.positionOverride != null) {
+      return widget.content.positionOverride!;
+    }
+
+    // Try to get position from the active anchor key
+    if (_activeAnchorKey != null) {
+      final context = _activeAnchorKey!.currentContext;
+      if (context != null) {
+        final renderObject = context.findRenderObject();
+        if (renderObject is RenderBox && renderObject.attached) {
+          return renderObject.localToGlobal(Offset.zero);
+        }
       }
     }
 
-    return effects;
+    // Fallback to stored render box
+    if (widget.content._renderBox != null &&
+        widget.content._renderBox!.attached) {
+      return widget.content._renderBox!.localToGlobal(Offset.zero);
+    }
+
+    return widget.content.anchorPosition;
+  }
+
+  Size _computeAnchorSize() {
+    // If position override is set, use default size
+    if (widget.content.positionOverride != null) {
+      return const Size(100, 40);
+    }
+
+    // Try to get size from the active anchor key
+    if (_activeAnchorKey != null) {
+      final context = _activeAnchorKey!.currentContext;
+      if (context != null) {
+        final renderObject = context.findRenderObject();
+        if (renderObject is RenderBox && renderObject.attached) {
+          return renderObject.size;
+        }
+      }
+    }
+
+    // Fallback to stored render box
+    if (widget.content._renderBox != null &&
+        widget.content._renderBox!.attached) {
+      return widget.content._renderBox!.size;
+    }
+
+    return widget.content.anchorSize;
+  }
+
+  @override
+  void didUpdateWidget(covariant _BubbleBuildWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update position when widget updates (e.g., content changes)
+    _schedulePositionUpdate();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Sizer(builder: (context, orientation, deviceType) {
-      return Box(
-        height: 100.h,
-        width: 100.w,
-        child: Material(
-          type: MaterialType.transparency,
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: Stack(
-              children: [
-                // the page widget over which the bubble will be displayed
-                child,
+    // Schedule position update for next frame to catch layout changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _updatePosition();
+    });
 
-                // the background overlay layer
-                OnBuilder(
-                    listenToMany: [
-                      BubbleLabel._animationController,
-                      BubbleLabel.controller,
-                    ],
-                    builder: () {
-                      // If no bubble is active, always ignore pointer events
-                      // If a bubble is active, only allow pointer events when dismissOnBackgroundTap is true
-                      final shouldIgnore =
-                          BubbleLabel.controller.state == null ||
-                              !(BubbleLabel.controller.state
-                                      ?.dismissOnBackgroundTap ??
-                                  false);
+    return Positioned(
+      // Vertical position: bubble bottom at (anchor top - padding).
+      // Positive padding => bubble above anchor; negative => below.
+      top: _currentPosition.dy - widget.content.floatingVerticalPadding,
 
-                      return IgnorePointer(
-                        key: const Key('bubble_label_background_ignore'),
-                        ignoring: shouldIgnore,
-                        child: GestureDetector(
-                          key: const Key('bubble_label_background_gesture'),
-                          onTap: () {
-                            if (BubbleLabel
-                                    .controller.state?.dismissOnBackgroundTap ??
-                                false) {
-                              BubbleLabel.dismiss();
-                            }
-                          },
-                          child: Box(
-                            height: 100.h,
-                            width: 100.w,
-                            color: Colors.black.withValues(
-                                alpha: BubbleLabel.controller.state
-                                        ?.backgroundOverlayLayerOpacity ??
-                                    0),
-                          ),
-                        ).animate(
-                          effects: _bubbleLabelIsActiveAnimationController
-                                      .state ==
-                                  null
-                              ? []
-                              : _bubbleLabelIsActiveAnimationController.state ==
-                                      true
-                                  ? [
-                                      FadeEffect(
-                                        duration: 0.3.sec,
-                                        curve: Curves.easeInOut,
-                                        begin: 0,
-                                        end: 1,
-                                      ),
-                                    ]
-                                  : [
-                                      FadeEffect(
-                                        duration: 0.1.sec,
-                                        curve: Curves.easeInOut,
-                                        begin: 1,
-                                        end: 0,
-                                      ),
-                                    ],
-                        ),
-                      );
-                    }),
+      // Calculate initial left position
+      // to center the bubble on the child widget
+      left: _currentPosition.dx + _currentSize.width / 2,
+      child: FractionalTranslation(
+        // Center horizontally and align bottom to the top coordinate
+        translation: const Offset(-0.5, -1.0),
+        child: TapRegion(
+          key: const Key('bubble_label_tap_region'),
+          // Group ID allows external widgets to join this TapRegion group
+          groupId: _bubbleLabelTapRegionGroupId,
+          // Use deferToChild so child widgets can still receive taps
+          behavior: HitTestBehavior.deferToChild,
+          // Don't consume outside taps - just observe them
+          consumeOutsideTaps: false,
+          onTapOutside: (event) {
+            // Call user callback if provided
+            widget.content.onTapOutside?.call(
+              TapDownDetails(globalPosition: event.position),
+            );
+            // Only dismiss if dismissOnBackgroundTap is true
+            if (widget.content.dismissOnBackgroundTap) {
+              BubbleLabel.dismiss();
+            }
+          },
+          onTapInside: (event) {
+            // Call user callback if provided
+            widget.content.onTapInside?.call(
+              TapDownDetails(globalPosition: event.position),
+            );
+            // Just observe - don't consume, let child widgets handle the tap
+          },
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              //the arrow tip of the bubble
+              Positioned(
+                bottom: -12,
+                left: 0,
+                right: 0,
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Transform.scale(
+                    scale: 2.0,
+                    child: Icon(
+                      Icons.arrow_drop_down,
+                      color: widget.content.bubbleColor,
+                    ),
+                  ),
+                ),
+              ),
 
-                // the bubble widget
-                OnBuilder(
-                    listenToMany: [
-                      BubbleLabel.controller,
-                      BubbleLabel._animationController
-                    ],
-                    builder: () {
-                      //if there is no bubble content, return an empty widget
-                      if (BubbleLabel.controller.state == null) {
-                        return SizedBox();
-                      }
-
-                      //return the bubble widget
-                      return Positioned(
-                        // Vertical position: bubble bottom at (anchor top - padding).
-                        // Positive padding => bubble above anchor; negative => below.
-                        top: BubbleLabel.controller.state!.anchorPosition.dy -
-                            BubbleLabel
-                                .controller.state!.floatingVerticalPadding,
-
-                        // Calculate initial left position
-                        // to center the bubble on the child widget
-                        left: BubbleLabel.controller.state!.anchorPosition.dx +
-                            BubbleLabel.controller.state!.anchorSize.width / 2,
-                        child: FractionalTranslation(
-                          // Center horizontally and align bottom to the top coordinate
-                          translation: const Offset(-0.5, -1.0),
-                          child: IgnorePointer(
-                            key: const Key('bubble_label_ignore'),
-                            ignoring: shouldIgnorePointer,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                //the arrow tip of the buble
-                                Positioned(
-                                  bottom: -12,
-                                  left: 0,
-                                  right: 0,
-                                  child: Align(
-                                    alignment: Alignment.bottomCenter,
-                                    child: Transform.scale(
-                                      scale: 2.0,
-                                      child: Icon(
-                                        Icons.arrow_drop_down,
-                                        color: BubbleLabel
-                                            .controller.state!.bubbleColor,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                //the buble
-                                _BubbleWidget(
-                                  bubbleColor:
-                                      BubbleLabel.controller.state!.bubbleColor,
-                                  content:
-                                      BubbleLabel.controller.state!.child ??
-                                          Container(),
-                                )
-                              ],
-                            ).animate(
-                              // key: ValueKey(
-                              //     "labelUpDownAnimation + ${_bubbleLabelIsActiveAnimationController.state}"),
-                              effects: getEffects(),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-              ],
-            ),
+              // The bubble content - use AbsorbPointer when ignoring so TapRegion still detects inside/outside
+              Builder(
+                builder: (context) {
+                  final bubbleWidget = _BubbleWidget(
+                    bubbleColor: widget.content.bubbleColor,
+                    content: widget.content.child ?? Container(),
+                  );
+                  // Use AbsorbPointer when ignoring: it still participates in hit testing
+                  // (so TapRegion knows taps are "inside"), but doesn't pass events to children.
+                  // When NOT ignoring, just return the widget directly so children get taps.
+                  if (widget.shouldIgnorePointer) {
+                    return AbsorbPointer(
+                      key: const Key('bubble_label_absorb'),
+                      absorbing: true,
+                      child: bubbleWidget,
+                    );
+                  } else {
+                    return bubbleWidget;
+                  }
+                },
+              )
+            ],
+          ).animate(
+            effects: widget.effects,
           ),
         ),
-      );
-    });
+      ),
+    );
   }
 }
 
-//******************************************* */
-
 class _BubbleWidget extends StatelessWidget {
   final Color? bubbleColor;
-  final Widget? content;
+  final Widget content;
+
   const _BubbleWidget({
     this.bubbleColor,
-    this.content,
+    required this.content,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        color: bubbleColor ?? Colors.blue.shade300,
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          color: bubbleColor ?? Colors.blue.shade300,
+        ),
+        child: Center(
+          child: content,
+        ),
       ),
-      child: Center(
-        child: content ?? Container(),
+    );
+  }
+}
+
+/// The background overlay widget that appears behind the bubble.
+class _BackgroundOverlayWidget extends StatefulWidget {
+  final BubbleLabelContent? content;
+  final bool? isActive;
+
+  const _BackgroundOverlayWidget({
+    required this.content,
+    required this.isActive,
+  });
+
+  @override
+  State<_BackgroundOverlayWidget> createState() =>
+      _BackgroundOverlayWidgetState();
+}
+
+class _BackgroundOverlayWidgetState extends State<_BackgroundOverlayWidget> {
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      key: const Key('bubble_label_background_ignore'),
+      child: Container(
+        color: Colors.black.withValues(
+          alpha: widget.content?.backgroundOverlayLayerOpacity ?? 0,
+        ),
+      ).animate(
+        effects: widget.isActive == null
+            ? []
+            : widget.isActive == true
+                ? [
+                    FadeEffect(
+                      duration: 0.3.sec,
+                      curve: Curves.easeInOut,
+                      begin: 0,
+                      end: 1,
+                    ),
+                  ]
+                : [
+                    FadeEffect(
+                      duration: 0.1.sec,
+                      curve: Curves.easeInOut,
+                      begin: 1,
+                      end: 0,
+                    ),
+                  ],
       ),
     );
   }
@@ -282,6 +313,24 @@ final _bubbleLabelIsActiveAnimationController = RM.inject<bool?>(
   () => null,
   autoDisposeWhenNotUsed: true,
 );
+
+final _bubbleLabelBackgroundOverlayEntryController = RM.inject<OverlayEntry?>(
+  () => null,
+  autoDisposeWhenNotUsed: true,
+);
+
+final _bubbleLabelBubbleEntryController = RM.inject<OverlayEntry?>(
+  () => null,
+  autoDisposeWhenNotUsed: true,
+);
+
+/// Timer for the dismiss animation - can be cancelled if a new dismiss is called
+Timer? _dismissAnimationTimer;
+
+/// The group ID object used by the bubble's TapRegion.
+/// External widgets can wrap themselves with TapRegion using this groupId
+/// to be considered "inside" the bubble (preventing dismissOnBackgroundTap).
+final Object _bubbleLabelTapRegionGroupId = Object();
 //******************************************* */
 
 /// Defines the content and appearance of a bubble shown by
@@ -335,6 +384,19 @@ class BubbleLabelContent {
   /// if true, tapping on the background overlay will dismiss the bubble.
   final bool dismissOnBackgroundTap;
 
+  /// When true (default), the bubble ignores pointer events, allowing
+  /// taps to pass through to widgets underneath. When false, the bubble
+  /// content can receive pointer events (e.g., buttons inside the bubble).
+  final bool shouldIgnorePointer;
+
+  /// Optional callback invoked when a tap is detected inside the bubble.
+  /// Useful for visual feedback or analytics.
+  final void Function(TapDownDetails event)? onTapInside;
+
+  /// Optional callback invoked when a tap is detected outside the bubble.
+  /// Called before `dismissOnBackgroundTap` logic is applied.
+  final void Function(TapDownDetails event)? onTapOutside;
+
   /// Creates a `BubbleLabelContent`.
   ///
   /// The `bubbleColor`, `labelWidth`, and `labelHeight` parameters
@@ -350,6 +412,9 @@ class BubbleLabelContent {
     RenderBox? childWidgetRenderBox,
     this.positionOverride,
     this.dismissOnBackgroundTap = false,
+    this.shouldIgnorePointer = true,
+    this.onTapInside,
+    this.onTapOutside,
   })  : id = id ?? Xid().toString(),
         // Default: slightly above anchor (5 px)
         floatingVerticalPadding = verticalPadding ?? 5.0,
@@ -366,6 +431,9 @@ class BubbleLabelContent {
     this.shouldActivateOnLongPressOnAllPlatforms = false,
     this.positionOverride,
     this.dismissOnBackgroundTap = false,
+    this.shouldIgnorePointer = true,
+    this.onTapInside,
+    this.onTapOutside,
   })  : id = id ?? Xid().toString(),
         floatingVerticalPadding = verticalPadding ?? 5.0,
         _childWidgetRenderBox = null;
@@ -396,6 +464,9 @@ class BubbleLabelContent {
     bool? shouldActiveOnLongPressOnAllPlatforms,
     String? id,
     Offset? positionOverride,
+    bool? shouldIgnorePointer,
+    void Function(TapDownDetails event)? onTapInside,
+    void Function(TapDownDetails event)? onTapOutside,
   }) {
     return BubbleLabelContent._internal(
       id: id ?? this.id,
@@ -410,6 +481,9 @@ class BubbleLabelContent {
       childWidgetRenderBox: _childWidgetRenderBox,
       positionOverride: positionOverride ?? this.positionOverride,
       dismissOnBackgroundTap: dismissOnBackgroundTap,
+      shouldIgnorePointer: shouldIgnorePointer ?? this.shouldIgnorePointer,
+      onTapInside: onTapInside ?? this.onTapInside,
+      onTapOutside: onTapOutside ?? this.onTapOutside,
     );
   }
 
@@ -425,6 +499,9 @@ class BubbleLabelContent {
       childWidgetRenderBox: renderBox,
       positionOverride: positionOverride,
       dismissOnBackgroundTap: dismissOnBackgroundTap,
+      shouldIgnorePointer: shouldIgnorePointer,
+      onTapInside: onTapInside,
+      onTapOutside: onTapOutside,
     );
   }
 }
@@ -436,11 +513,14 @@ class BubbleLabelContent {
 /// to remove it. The `controller` getter exposes the current
 /// `BubbleLabelContent` state so you can read or update the content
 /// directly when needed.
+///
+/// No wrapper widget is required! The app just needs to use MaterialApp,
+/// CupertinoApp, or have an Overlay widget in the widget tree.
 class BubbleLabel {
   /// Default constructor for `BubbleLabel`.
   BubbleLabel();
 
-  //-------------------------------------------------------------//w
+  //-------------------------------------------------------------//
 
   /// The injected state that holds the current [BubbleLabelContent].
   ///
@@ -451,14 +531,77 @@ class BubbleLabel {
 
   static Injected<bool?> get _animationController =>
       _bubbleLabelIsActiveAnimationController;
+
   //-------------------------------------------------------------//
 
   /// Returns `true` when a bubble is currently active and visible.
   static bool get isActive => controller.state != null;
 
-  /// Returns `true` when a bubble is currently active and visible.
+  /// Returns `true` when a bubble is currently active and visible by id.
   static bool isActiveById(String? id) =>
       id == null ? false : controller.state?.id == id;
+
+  /// The group ID object used by the bubble's TapRegion.
+  ///
+  /// External widgets can wrap themselves with a `TapRegion` using this
+  /// `groupId` to be considered "inside" the bubble. This prevents
+  /// `dismissOnBackgroundTap` from triggering when tapping those widgets.
+  ///
+  /// Example:
+  /// ```dart
+  /// TapRegion(
+  ///   groupId: BubbleLabel.tapRegionGroupId,
+  ///   child: MyWidget(),
+  /// )
+  /// ```
+  static Object get tapRegionGroupId => _bubbleLabelTapRegionGroupId;
+
+  //-------------------------------------------------------------//
+
+  /// Returns the animation effects to apply when the bubble appears
+  /// and disappears.
+  ///
+  /// This is used internally to animate the bubble.
+  static List<Effect<dynamic>> _getEffects() {
+    List<Effect<dynamic>> effects = [];
+
+    if (_bubbleLabelIsActiveAnimationController.state != null) {
+      if (_bubbleLabelIsActiveAnimationController.state!) {
+        effects = [
+          FadeEffect(
+            begin: 0,
+            end: 1,
+            duration: 0.2.sec,
+            curve: Curves.easeIn,
+          ),
+          MoveEffect(
+            begin: Offset(0, 5),
+            end: Offset(0, -1),
+            duration: 0.2.sec,
+            curve: Curves.easeIn,
+          )
+        ];
+      } else {
+        effects = [
+          MoveEffect(
+            begin: Offset(0, -1),
+            end: Offset(0, 5),
+            duration: 0.2.sec,
+            curve: Curves.easeOutBack,
+          ),
+          FadeEffect(
+            begin: 1,
+            end: 0,
+            delay: 0.1.sec,
+            duration: 0.2.sec,
+            curve: Curves.easeOutBack,
+          ),
+        ];
+      }
+    }
+
+    return effects;
+  }
 
   //-------------------------------------------------------------//
 
@@ -471,16 +614,31 @@ class BubbleLabel {
   /// `anchorKey` can be provided so the bubble automatically derives
   /// the anchor `RenderBox` without requiring callers to manually call
   /// `context.findRenderObject()`.
+  ///
+  /// `context` is optional but recommended when using `positionOverride`
+  /// to ensure the Overlay can be found.
+  ///
+  /// Requires: An Overlay widget in the widget tree (provided by
+  /// MaterialApp, CupertinoApp, or manually added).
   static Future<void> show({
     required BubbleLabelContent bubbleContent,
     bool animate = true,
     GlobalKey? anchorKey,
+    BuildContext? context,
   }) async {
     assert(
       (bubbleContent.positionOverride != null) ^ (anchorKey != null),
       'Provide exactly one of an anchorKey or a positionOverride so the bubble can compute its anchor.',
     );
+
     var content = bubbleContent;
+
+    // Resolve overlay BEFORE any async gaps to avoid using BuildContext across async gaps
+    final overlay = _resolveOverlay(anchorKey, context);
+    if (overlay == null) {
+      _throwOverlayError();
+      return;
+    }
 
     //dismiss the previous bubble (just in case)
     if (BubbleLabel.isActive) {
@@ -498,8 +656,14 @@ class BubbleLabel {
       content = content._withRenderBox(renderBox);
     }
 
+    // Store the anchor key for dynamic position tracking
+    _activeAnchorKey = anchorKey;
+
     //set the new bubble content
-    BubbleLabel.controller.update((state) => content);
+    BubbleLabel.controller.update<BubbleLabelContent?>((state) => content);
+
+    // Insert entries using the pre-resolved overlay
+    _insertOverlayEntries(content, overlay);
   }
 
   //-------------------------------------------------------------//
@@ -510,17 +674,202 @@ class BubbleLabel {
   /// played. If `animate` is false the bubble is removed immediately
   /// (useful for testing or when you need an immediate dismissal).
   static Future<void> dismiss({bool animate = true}) async {
+    // Cancel any pending dismiss animation timer
+    _dismissAnimationTimer?.cancel();
+    _dismissAnimationTimer = null;
+
     if (animate) {
-      // trigger the 'dismiss' animation and refresh after it completes
+      // trigger the 'dismiss' animation
       BubbleLabel._animationController.state = false;
-      await Future.delayed(0.3.sec);
-      BubbleLabel.controller.refresh();
+
+      // Use a Completer to allow awaiting the timer completion
+      final completer = Completer<void>();
+
+      _dismissAnimationTimer = Timer(0.3.sec, () {
+        _dismissAnimationTimer = null;
+        _activeAnchorKey = null; // Clear anchor key
+        _removeOverlayEntries();
+        BubbleLabel.controller.refresh();
+        completer.complete();
+      });
+
+      return completer.future;
     } else {
-      // no animation -> refresh immediately so callers (including tests) don't have
-      // to await a delayed future or pump the test clock
+      // no animation -> remove immediately
+      _activeAnchorKey = null; // Clear anchor key
+      _removeOverlayEntries();
       BubbleLabel._animationController.state = null;
       BubbleLabel.controller.refresh();
     }
+  }
+
+  //-------------------------------------------------------------//
+
+  /// Updates the currently active bubble's content properties.
+  ///
+  /// Use this to reactively update bubble properties while it's displayed,
+  /// such as changing `shouldIgnorePointer` when a toggle changes.
+  ///
+  /// Only updates if a bubble is currently active. Returns `true` if
+  /// the update was applied, `false` if no bubble is active.
+  ///
+  /// Example:
+  /// ```dart
+  /// BubbleLabel.updateContent(shouldIgnorePointer: newValue);
+  /// ```
+  static bool updateContent({
+    Widget? child,
+    Color? bubbleColor,
+    double? backgroundOverlayLayerOpacity,
+    double? floatingVerticalPadding,
+    bool? shouldActiveOnLongPressOnAllPlatforms,
+    Offset? positionOverride,
+    bool? shouldIgnorePointer,
+  }) {
+    if (!isActive || controller.state == null) {
+      return false;
+    }
+
+    final currentContent = controller.state!;
+    controller.state = currentContent.copyWith(
+      child: child,
+      bubbleColor: bubbleColor,
+      backgroundOverlayLayerOpacity: backgroundOverlayLayerOpacity,
+      floatingVerticalPadding: floatingVerticalPadding,
+      shouldActiveOnLongPressOnAllPlatforms:
+          shouldActiveOnLongPressOnAllPlatforms,
+      positionOverride: positionOverride,
+      shouldIgnorePointer: shouldIgnorePointer,
+    );
+    return true;
+  }
+
+  //-------------------------------------------------------------//
+
+  static void _throwOverlayError() {
+    const errorMessage =
+        'BubbleLabel requires an Overlay widget in the widget tree.\n'
+        'This typically happens when your app does not use MaterialApp or CupertinoApp.\n\n'
+        'To fix this, ensure your app uses one of these:\n'
+        '  • MaterialApp\n'
+        '  • CupertinoApp\n'
+        '  • Custom Overlay widget\n\n'
+        'Example:\n'
+        '  MaterialApp(\n'
+        '    home: Scaffold(\n'
+        '      body: YourContent(),\n'
+        '    ),\n'
+        '  )';
+
+    assert(false, errorMessage);
+    throw FlutterError(errorMessage);
+  }
+
+  /// Resolves the OverlayState from the given anchorKey or context.
+  /// Returns null if no overlay can be found.
+  static OverlayState? _resolveOverlay(
+    GlobalKey? anchorKey,
+    BuildContext? callerContext,
+  ) {
+    // Get context from anchorKey or use the provided context
+    BuildContext? contextToUse = anchorKey?.currentContext ?? callerContext;
+
+    // If we still don't have a context, we can't proceed
+    if (contextToUse == null) {
+      return null;
+    }
+
+    // Try to find the Overlay widget in the widget tree
+    OverlayState? overlay;
+    try {
+      overlay = Overlay.of(contextToUse);
+    } catch (e) {
+      // If the direct approach fails, try to find it through Navigator
+      try {
+        final navigator = Navigator.of(contextToUse);
+        overlay = navigator.overlay;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    return overlay;
+  }
+
+  /// Inserts the background overlay and bubble entries into the Overlay.
+  static void _insertOverlayEntries(
+    BubbleLabelContent content,
+    OverlayState overlay,
+  ) {
+    // Create background overlay entry
+    final backgroundEntry = OverlayEntry(
+      builder: (context) => OnBuilder(
+        listenToMany: [
+          BubbleLabel._animationController,
+          BubbleLabel.controller,
+        ],
+        builder: () => _BackgroundOverlayWidget(
+          content: BubbleLabel.controller.state,
+          isActive: BubbleLabel._animationController.state,
+        ),
+      ),
+    );
+
+    // Create bubble entry
+    final bubbleEntry = OverlayEntry(
+      builder: (context) => Stack(
+        clipBehavior: Clip.none,
+        children: [
+          OnBuilder(
+            listenToMany: [
+              BubbleLabel.controller,
+              BubbleLabel._animationController
+            ],
+            builder: () {
+              //if there is no bubble content, return an empty widget
+              if (BubbleLabel.controller.state == null) {
+                return const SizedBox();
+              }
+
+              //return the bubble widget
+              return _BubbleBuildWidget(
+                content: BubbleLabel.controller.state!,
+                effects: BubbleLabel._getEffects(),
+                shouldIgnorePointer:
+                    BubbleLabel.controller.state!.shouldIgnorePointer,
+              );
+            },
+          ),
+        ],
+      ),
+    );
+
+    // Store references
+    _bubbleLabelBackgroundOverlayEntryController.state = backgroundEntry;
+    _bubbleLabelBubbleEntryController.state = bubbleEntry;
+
+    // Insert into overlay
+    overlay.insert(backgroundEntry);
+    overlay.insert(bubbleEntry);
+  }
+
+  //-------------------------------------------------------------//
+
+  /// Removes the overlay entries from the Overlay.
+  static void _removeOverlayEntries() {
+    final backgroundEntry = _bubbleLabelBackgroundOverlayEntryController.state;
+    final bubbleEntry = _bubbleLabelBubbleEntryController.state;
+
+    if (backgroundEntry != null && backgroundEntry.mounted) {
+      backgroundEntry.remove();
+    }
+
+    if (bubbleEntry != null && bubbleEntry.mounted) {
+      bubbleEntry.remove();
+    }
+
+    _bubbleLabelBackgroundOverlayEntryController.state = null;
+    _bubbleLabelBubbleEntryController.state = null;
   }
 
   //-------------------------------------------------------------//

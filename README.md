@@ -23,14 +23,16 @@ Add the package as a dependency in your app's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bubble_label: ^3.0.1
+  bubble_label: ^4.0.0
 ```
 
 > When using this package from outside the repository (published), replace the path dependency with a hosted version.
 
 ## Basic usage
 
-Wrap your app's root widget with `BubbleLabelController` so the overlay can be displayed on top of your UI. A minimal usage looks like this:
+No wrapper widget is required! The package uses Flutter's native `Overlay` system, which is automatically provided by `MaterialApp`, `CupertinoApp`, or any widget tree that includes an `Overlay`.
+
+A minimal usage looks like this:
 
 ```dart
 import 'package:flutter/material.dart';
@@ -42,11 +44,9 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
-    return BubbleLabelController(
-      child: MaterialApp(
-        home: Scaffold(
-          body: Center(child: Text('Your app')),
-        ),
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(child: Text('Your app')),
       ),
     );
   }
@@ -57,7 +57,7 @@ Use `BubbleLabel.show(...)` to present a bubble and provide a `BubbleLabelConten
 
 Example app features
 --------------------
-- Toggle `Allow bubble pointer events` (controls `BubbleLabelController.shouldIgnorePointer`). When this is off the bubble ignores taps; turning it off allows the bubble to receive pointer events.
+- Toggle `Allow bubble pointer events` — controls whether the bubble receives pointer events (sets `shouldIgnorePointer` on `BubbleLabelContent`). When this is off the bubble ignores taps; turning it on allows the bubble to receive pointer events.
 - Toggle `Animate` (show/dismiss animations — uses the `animate` parameter when calling `BubbleLabel.show` or `BubbleLabel.dismiss`).
 - Toggle `Use overlay` — when off, only the bubble is shown without any background overlay.
 - Buttons:
@@ -72,11 +72,12 @@ Example app features
 ## API
 Key public pieces of the API:
 
-- `BubbleLabelController` — a top-level widget that must wrap the application and allows the bubble to render above other widgets.
 - `BubbleLabel.show(...)` — show the bubble overlay with provided content and parameters. Passing an `anchorKey` lets the bubble automatically derive the anchor `RenderBox`, so you can skip manual `context.findRenderObject()` calls; alternatively you can supply a `BubbleLabelContent.positionOverride`. Exactly one of those anchor inputs must be provided—supplying both is disallowed.
 - `BubbleLabel.dismiss()` — dismiss the bubble.
 - `BubbleLabel.isActive` — boolean property indicating whether a bubble is currently active.
 - `BubbleLabel.controller` — access to the injected controller instance for programmatic inspection or updates (advanced use).
+- `BubbleLabel.updateContent(...)` — update the active bubble's content dynamically without dismissing it (new in v4.0.0).
+- `BubbleLabel.tapRegionGroupId` — the group ID used by the bubble's `TapRegion`, allowing external widgets to be considered "inside" the bubble (new in v4.0.0).
 
 `BubbleLabelContent` fields include (defaults shown where applicable):
 - `child` — the content widget of the bubble.
@@ -85,6 +86,9 @@ Key public pieces of the API:
 - `_childWidgetRenderBox` — internal storage for the anchor widget's `RenderBox` when an `anchorKey` is supplied to `BubbleLabel.show`. The bubble size/position still honors `positionOverride` when you need to anchor to specific coordinates instead.
 - `positionOverride` — optional explicit `Offset` to anchor the bubble directly.
 - `backgroundOverlayLayerOpacity` — opacity for the background overlay.
+- `shouldIgnorePointer` — when `true`, pointer events pass through the bubble content (new in v4.0.0).
+- `onTapInside` — callback triggered when a tap is detected inside the bubble (new in v4.0.0).
+- `onTapOutside` — callback triggered when a tap is detected outside the bubble (new in v4.0.0).
 
 Optional parameters you might find handy:
 - `bubbleColor` — use to customize bubble color.
@@ -119,14 +123,31 @@ Testing & debugging tip: The package exposes a small `controller` that can be in
 - Removed `childWidgetPosition`/`childWidgetSize` — instead rely on the anchor automatically resolved from the `anchorKey` you pass to `BubbleLabel.show`, or fall back to `positionOverride` when specifying explicit screen coordinates.
 - `BubbleLabelContent` now includes an `id` and `dismissOnBackgroundTap` to enable automatic background tap dismissals.
 
-Advanced usage
-```
-// Wrap your app and customize pointer behaviour
+### Migrating from v3.x to v4.0.0
+
+**Before (v3.x):**
+```dart
 BubbleLabelController(
-  shouldIgnorePointer: false, // set to false so the bubble receives pointer events
+  shouldIgnorePointer: false,
   child: MaterialApp(...),
 );
+```
 
+**After (v4.0.0):**
+```dart
+MaterialApp(...); // No wrapper needed!
+
+BubbleLabel.show(
+  bubbleContent: BubbleLabelContent(
+    child: Text('Hello'),
+    shouldIgnorePointer: false, // Now set per-bubble
+  ),
+  anchorKey: myKey,
+);
+```
+
+Advanced usage
+```
 // Show a bubble automatically anchored to the widget that triggered it
 final showButtonKey = GlobalKey();
 ElevatedButton(
@@ -156,7 +177,71 @@ BubbleLabel.show(
 ```
 
 Keep each `GlobalKey` as a long-lived field (for example, on your widget's state) and re-use it when calling `BubbleLabel.show`. That way the anchor `RenderBox` is stable, you avoid extra builders, and the bubble can always resolve the correct position.
+
+### Reactive Updates (v4.0.0+)
+
+Use `BubbleLabel.updateContent()` to dynamically update the bubble while it's displayed:
+
+```dart
+// Update a property while the bubble is open
+BubbleLabel.updateContent(shouldIgnorePointer: true);
+```
+
+### TapRegion Group Integration (v4.0.0+)
+
+If you have external widgets (like toggles or controls) that should be considered "inside" the bubble for tap detection purposes, wrap them with a `TapRegion` using the bubble's group ID:
+
+```dart
+TapRegion(
+  groupId: BubbleLabel.tapRegionGroupId,
+  child: YourControlWidget(),
+)
+```
+
+Taps on these wrapped widgets won't trigger `onTapOutside` or dismiss the bubble via `dismissOnBackgroundTap`.
+
+### Tap Event Callbacks (v4.0.0+)
+
+Use `onTapInside` and `onTapOutside` callbacks for custom tap handling:
+
+```dart
+BubbleLabelContent(
+  child: const Text('Interactive bubble'),
+  onTapInside: (details) {
+    // Handle tap inside bubble
+  },
+  onTapOutside: (details) {
+    // Handle tap outside bubble
+  },
+)
+```
+
 ## Changelog
+
+### 4.0.0 (2025-12-12) - Overlay-based Implementation & Enhanced Interactivity
+
+**BREAKING CHANGES:**
+- **Removed `BubbleLabelController` widget requirement** — The package now uses Flutter's native `Overlay` system, eliminating the need to wrap your app with a custom controller widget.
+- **Migrated from Stack-based to Overlay-based rendering** — Uses native `OverlayEntry` for better performance.
+- **Moved `shouldIgnorePointer` from `BubbleLabelController` to `BubbleLabelContent`** — Now set per-bubble instead of globally.
+
+**New Features:**
+- **`shouldIgnorePointer` property** on `BubbleLabelContent` — control whether pointer events pass through the bubble content.
+- **`onTapInside` / `onTapOutside` callbacks** on `BubbleLabelContent` — respond to tap events inside or outside the bubble.
+- **`BubbleLabel.updateContent()`** — dynamically update the active bubble's content without dismissing it.
+- **`BubbleLabel.tapRegionGroupId`** — exposed group ID allowing external widgets to be considered "inside" the bubble for tap detection.
+
+**Improvements:**
+- Replaced `IgnorePointer` with `AbsorbPointer` for proper `TapRegion` hit testing.
+- Dismiss animation now uses a cancellable `Timer` to prevent race conditions.
+- Fixed BuildContext async gap lint warning in dismiss flow.
+- Removed all `debugPrint` statements from the library.
+- Hybrid validation system for better overlay detection feedback.
+
+### 3.0.0 (2025-12-05)
+
+- Boilerplate reduction: `BubbleLabel.show` now automatically resolves the anchor `RenderBox` when passing an `anchorKey`.
+- Stricter input validation: must provide exactly one anchor source (`anchorKey` or `positionOverride`).
 
 ### 2.0.0 (2025-11-30)
 

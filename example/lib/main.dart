@@ -216,11 +216,10 @@ class ExamplePage extends StatefulWidget {
 }
 
 class _ExamplePageState extends State<ExamplePage> {
-  final noOverlayKey = GlobalKey();
-  final bubbleKey = GlobalKey();
+  // GlobalKeys are only needed when you want to anchor to a different widget
+  // than the one triggering the bubble, or for dynamic position tracking.
   final longPressKey = GlobalKey();
   final bubbleButtonKey = GlobalKey();
-  final positionOverrideButtonKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -232,50 +231,60 @@ class _ExamplePageState extends State<ExamplePage> {
         spacing: 12,
         children: [
           /// A simple button that shows a bubble when tapped.
-          ElevatedButton(
-            key: bubbleKey,
-            onPressed: () {
-              BubbleLabel.show(
-                bubbleContent: BubbleLabelContent(
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Text('Hello bubble!',
-                        style: TextStyle(color: Colors.white)),
-                  ),
-                  bubbleColor: Colors.deepPurpleAccent,
-                  backgroundOverlayLayerOpacity: widget.useOverlay ? 0.3 : 0.0,
-                ),
-                animate: widget.animate,
-                anchorKey: bubbleKey,
+          /// This demonstrates the simplified API where context is the anchor.
+          Builder(
+            builder: (buttonContext) {
+              return ElevatedButton(
+                onPressed: () {
+                  BubbleLabel.show(
+                    context: buttonContext, // Uses this button as anchor
+                    bubbleContent: BubbleLabelContent(
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Text('Hello bubble!',
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                      bubbleColor: Colors.deepPurpleAccent,
+                      backgroundOverlayLayerOpacity:
+                          widget.useOverlay ? 0.3 : 0.0,
+                    ),
+                    animate: widget.animate,
+                    // No anchorKey needed! Context is the anchor.
+                  );
+                },
+                child: const Text('show bubble'),
               );
             },
-            child: const Text('show bubble'),
           ),
 
           /// A simple button that shows a bubble without overlay when tapped.
-          ElevatedButton(
-            key: noOverlayKey,
-            onPressed: () {
-              final bubbleContent = BubbleLabelContent(
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Text(
-                    'bubble 25px above Anchor widget',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-                bubbleColor: Colors.green,
-                backgroundOverlayLayerOpacity: 0.0,
-                verticalPadding: 25,
-              );
+          /// Also demonstrates simplified context-only API.
+          Builder(
+            builder: (buttonContext) {
+              return ElevatedButton(
+                onPressed: () {
+                  final bubbleContent = BubbleLabelContent(
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        'bubble 25px above Anchor widget',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    bubbleColor: Colors.green,
+                    backgroundOverlayLayerOpacity: 0.0,
+                    verticalPadding: 25,
+                  );
 
-              BubbleLabel.show(
-                bubbleContent: bubbleContent,
-                animate: widget.animate,
-                anchorKey: noOverlayKey,
+                  BubbleLabel.show(
+                    context: buttonContext,
+                    bubbleContent: bubbleContent,
+                    animate: widget.animate,
+                  );
+                },
+                child: const Text('Bubble 25px above'),
               );
             },
-            child: const Text('Bubble 25px above'),
           ),
 
           /// A long-press area that shows a bubble when long-pressed.
@@ -307,6 +316,7 @@ class _ExamplePageState extends State<ExamplePage> {
               );
 
               BubbleLabel.show(
+                context: context,
                 bubbleContent: bubbleContent,
                 animate: widget.animate,
                 anchorKey: longPressKey,
@@ -383,6 +393,7 @@ class _ExamplePageState extends State<ExamplePage> {
               );
 
               BubbleLabel.show(
+                context: context,
                 bubbleContent: bubbleContent,
                 animate: widget.animate,
                 anchorKey: bubbleButtonKey,
@@ -425,7 +436,6 @@ class _ExamplePageState extends State<ExamplePage> {
 
           /// A simple button that shows a bubble at a custom position when tapped.
           ElevatedButton(
-            key: positionOverrideButtonKey,
             onPressed: () {
               BubbleLabel.show(
                 bubbleContent: BubbleLabelContent(

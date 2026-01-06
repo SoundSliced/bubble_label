@@ -5,13 +5,19 @@ import 'package:bubble_label/bubble_label.dart';
 void main() {
   testWidgets('show and dismiss BubbleLabel', (WidgetTester tester) async {
     final anchorKey = GlobalKey();
+    late BuildContext testContext;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Center(
-            child: Container(
-              key: anchorKey,
-              child: const Text('content'),
+            child: Builder(
+              builder: (context) {
+                testContext = context;
+                return Container(
+                  key: anchorKey,
+                  child: const Text('content'),
+                );
+              },
             ),
           ),
         ),
@@ -23,6 +29,7 @@ void main() {
 
     // Show the bubble label with a fake anchor position
     BubbleLabel.show(
+      context: testContext,
       bubbleContent: BubbleLabelContent(
         child: const Text('Test bubble'),
       ),
@@ -50,61 +57,123 @@ void main() {
     expect(BubbleLabel.isActive, isFalse);
   });
 
-  testWidgets(
-      'show asserts when both anchorKey and positionOverride are provided',
+  testWidgets('show uses context as anchor when no anchorKey provided',
       (WidgetTester tester) async {
-    final anchorKey = GlobalKey();
+    late BuildContext testContext;
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: Center(child: Text('content'))),
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Builder(
+              builder: (context) {
+                testContext = context;
+                return const Text('content');
+              },
+            ),
+          ),
+        ),
       ),
     );
 
     await tester.pumpAndSettle();
 
-    expect(
-      () async => BubbleLabel.show(
-        bubbleContent: BubbleLabelContent(
-          child: const Text('Both provided'),
-          positionOverride: const Offset(0, 0),
-        ),
-        anchorKey: anchorKey,
-        animate: false,
+    // Show bubble without anchorKey - should use context as anchor
+    BubbleLabel.show(
+      context: testContext,
+      bubbleContent: BubbleLabelContent(
+        child: const Text('Context anchor'),
       ),
-      throwsAssertionError,
+      animate: false,
     );
+
+    await tester.pumpAndSettle();
+
+    expect(BubbleLabel.isActive, isTrue);
+    expect(find.text('Context anchor'), findsOneWidget);
+
+    await BubbleLabel.dismiss(animate: false);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('positionOverride takes precedence over context anchor',
+      (WidgetTester tester) async {
+    late BuildContext testContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Builder(
+              builder: (context) {
+                testContext = context;
+                return const Text('content');
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    // Show bubble with positionOverride - should use that position
+    BubbleLabel.show(
+      context: testContext,
+      bubbleContent: BubbleLabelContent(
+        child: const Text('Position override'),
+        positionOverride: const Offset(100, 100),
+      ),
+      animate: false,
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(BubbleLabel.isActive, isTrue);
+    expect(find.text('Position override'), findsOneWidget);
+    // Verify positionOverride is stored in controller
+    expect(
+        BubbleLabel.controller.state!.positionOverride, const Offset(100, 100));
+
+    await BubbleLabel.dismiss(animate: false);
+    await tester.pumpAndSettle();
   });
 
   testWidgets('dismiss via UI button', (WidgetTester tester) async {
     final showButtonKey = GlobalKey();
+    late BuildContext testContext;
     // Build a widget with a show and dismiss button like the example
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  key: showButtonKey,
-                  onPressed: () {
-                    BubbleLabel.show(
-                      bubbleContent: BubbleLabelContent(
-                        child: const Text('UI show'),
-                        // bubble size adapts to its child
-                      ),
-                      anchorKey: showButtonKey,
-                    );
-                  },
-                  child: const Text('Show'),
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  key: const Key('ui-dismiss'),
-                  onPressed: () => BubbleLabel.dismiss(animate: false),
-                  child: const Text('Dismiss'),
-                ),
-              ],
+            child: Builder(
+              builder: (context) {
+                testContext = context;
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      key: showButtonKey,
+                      onPressed: () {
+                        BubbleLabel.show(
+                          context: testContext,
+                          bubbleContent: BubbleLabelContent(
+                            child: const Text('UI show'),
+                            // bubble size adapts to its child
+                          ),
+                          anchorKey: showButtonKey,
+                        );
+                      },
+                      child: const Text('Show'),
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      key: const Key('ui-dismiss'),
+                      onPressed: () => BubbleLabel.dismiss(animate: false),
+                      child: const Text('Dismiss'),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -127,13 +196,19 @@ void main() {
       'bubble sets overlay opacity and bubble color in controller state',
       (WidgetTester tester) async {
     final anchorKey = GlobalKey();
+    late BuildContext testContext;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Center(
-            child: Container(
-              key: anchorKey,
-              child: const Text('content'),
+            child: Builder(
+              builder: (context) {
+                testContext = context;
+                return Container(
+                  key: anchorKey,
+                  child: const Text('content'),
+                );
+              },
             ),
           ),
         ),
@@ -144,6 +219,7 @@ void main() {
 
     // Show the bubble label with custom color and overlay opacity
     BubbleLabel.show(
+      context: testContext,
       bubbleContent: BubbleLabelContent(
         child: const Text('Opacity test'),
         // bubble size adapts to its child
@@ -170,14 +246,20 @@ void main() {
   testWidgets('bubble ignorePointer reflects default behavior',
       (WidgetTester tester) async {
     final anchorKey = GlobalKey();
+    late BuildContext testContext;
     // Bubble ignores pointer events by default
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Center(
-            child: Container(
-              key: anchorKey,
-              child: const Text('content'),
+            child: Builder(
+              builder: (context) {
+                testContext = context;
+                return Container(
+                  key: anchorKey,
+                  child: const Text('content'),
+                );
+              },
             ),
           ),
         ),
@@ -185,6 +267,7 @@ void main() {
     );
 
     BubbleLabel.show(
+      context: testContext,
       bubbleContent: BubbleLabelContent(
         child: const Text('Ignoring true'),
         // bubble size adapts to its child
@@ -214,20 +297,26 @@ void main() {
       (WidgetTester tester) async {
     int counter = 0;
     final anchorKey = GlobalKey();
+    late BuildContext testContext;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(key: anchorKey, width: 1, height: 1),
-                ElevatedButton(
-                  key: const Key('increment'),
-                  onPressed: () => counter++,
-                  child: const Text('Increment'),
-                ),
-              ],
+            child: Builder(
+              builder: (context) {
+                testContext = context;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(key: anchorKey, width: 1, height: 1),
+                    ElevatedButton(
+                      key: const Key('increment'),
+                      onPressed: () => counter++,
+                      child: const Text('Increment'),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -236,6 +325,7 @@ void main() {
 
     // Show bubble with dismissOnBackgroundTap true
     BubbleLabel.show(
+      context: testContext,
       bubbleContent: BubbleLabelContent(
         child: const Text('Tap outside to dismiss'),
         dismissOnBackgroundTap: true,
@@ -260,23 +350,30 @@ void main() {
   testWidgets('long press and animation timing behavior',
       (WidgetTester tester) async {
     final longPressAnchorKey = GlobalKey();
+    late BuildContext testContext;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Center(
-            child: GestureDetector(
-              key: longPressAnchorKey,
-              onLongPress: () {
-                BubbleLabel.show(
-                  bubbleContent: BubbleLabelContent(
-                    child: const Text('Long pressed!'),
-                    // bubble size adapts to its child
-                    backgroundOverlayLayerOpacity: 0.21,
-                  ),
-                  anchorKey: longPressAnchorKey,
+            child: Builder(
+              builder: (context) {
+                testContext = context;
+                return GestureDetector(
+                  key: longPressAnchorKey,
+                  onLongPress: () {
+                    BubbleLabel.show(
+                      context: testContext,
+                      bubbleContent: BubbleLabelContent(
+                        child: const Text('Long pressed!'),
+                        // bubble size adapts to its child
+                        backgroundOverlayLayerOpacity: 0.21,
+                      ),
+                      anchorKey: longPressAnchorKey,
+                    );
+                  },
+                  child: const Text('Long press me'),
                 );
               },
-              child: const Text('Long press me'),
             ),
           ),
         ),
@@ -306,13 +403,19 @@ void main() {
   testWidgets('updateContent updates bubble properties while active',
       (WidgetTester tester) async {
     final anchorKey = GlobalKey();
+    late BuildContext testContext;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Center(
-            child: Container(
-              key: anchorKey,
-              child: const Text('content'),
+            child: Builder(
+              builder: (context) {
+                testContext = context;
+                return Container(
+                  key: anchorKey,
+                  child: const Text('content'),
+                );
+              },
             ),
           ),
         ),
@@ -321,6 +424,7 @@ void main() {
 
     // Show bubble with shouldIgnorePointer true
     BubbleLabel.show(
+      context: testContext,
       bubbleContent: BubbleLabelContent(
         child: const Text('Update test'),
         shouldIgnorePointer: true,
@@ -377,13 +481,19 @@ void main() {
   testWidgets('shouldIgnorePointer controls AbsorbPointer presence',
       (WidgetTester tester) async {
     final anchorKey = GlobalKey();
+    late BuildContext testContext;
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Center(
-            child: Container(
-              key: anchorKey,
-              child: const Text('content'),
+            child: Builder(
+              builder: (context) {
+                testContext = context;
+                return Container(
+                  key: anchorKey,
+                  child: const Text('content'),
+                );
+              },
             ),
           ),
         ),
@@ -392,6 +502,7 @@ void main() {
 
     // Show with shouldIgnorePointer false (no AbsorbPointer should exist)
     BubbleLabel.show(
+      context: testContext,
       bubbleContent: BubbleLabelContent(
         child: const Text('Pointer enabled'),
         shouldIgnorePointer: false,
@@ -409,6 +520,7 @@ void main() {
 
     // Now show with shouldIgnorePointer true (AbsorbPointer should exist)
     BubbleLabel.show(
+      context: testContext,
       bubbleContent: BubbleLabelContent(
         child: const Text('Pointer disabled'),
         shouldIgnorePointer: true,
@@ -430,14 +542,20 @@ void main() {
   testWidgets('onTapInside and onTapOutside callbacks are stored in content',
       (WidgetTester tester) async {
     final anchorKey = GlobalKey();
+    late BuildContext testContext;
 
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Center(
-            child: Container(
-              key: anchorKey,
-              child: const Text('content'),
+            child: Builder(
+              builder: (context) {
+                testContext = context;
+                return Container(
+                  key: anchorKey,
+                  child: const Text('content'),
+                );
+              },
             ),
           ),
         ),
@@ -445,6 +563,7 @@ void main() {
     );
 
     BubbleLabel.show(
+      context: testContext,
       bubbleContent: BubbleLabelContent(
         child: const Text('Callback test'),
         onTapInside: (details) {},

@@ -1,3 +1,74 @@
+## 5.0.0 - 2026-01-06
+
+### BREAKING CHANGES
+
+- **`context` is now a required parameter in `BubbleLabel.show()`**: This ensures reliable overlay detection in complex widget trees and eliminates assertion errors.
+
+- **`anchorKey` is now optional**: The `context` widget is used as the anchor by default. Pass `anchorKey` only when you need to anchor the bubble to a different widget than the one calling `show()`.
+
+### New Features
+
+- **Simplified API — No more GlobalKey boilerplate!**: For simple use cases, just pass `context` and the bubble automatically anchors to that widget. No need to create and manage GlobalKeys.
+
+- **Context-as-anchor**: When no `anchorKey` or `positionOverride` is provided, the widget from `context` becomes the anchor. This dramatically simplifies common usage patterns.
+
+### Improvements
+
+- **Robust overlay lookup strategy**: Now tries `Overlay.maybeOf(context, rootOverlay: true)` first, then falls back to `rootOverlay: false` for maximum compatibility with complex widget trees.
+
+- **Better error messages**: Clearer guidance when overlay detection fails, with specific solutions and example code.
+
+### Migration from v4.x
+
+**Simplest migration (add context parameter):**
+```dart
+// Before (v4.x)
+BubbleLabel.show(
+  anchorKey: myKey,
+  bubbleContent: BubbleLabelContent(...),
+);
+
+// After (v5.0.0) - just add context
+BubbleLabel.show(
+  context: context,
+  anchorKey: myKey,  // Still works!
+  bubbleContent: BubbleLabelContent(...),
+);
+```
+
+**Simplified usage (no GlobalKey needed):**
+```dart
+// Before (v4.x) - required GlobalKey
+final myKey = GlobalKey();
+ElevatedButton(
+  key: myKey,
+  onPressed: () {
+    BubbleLabel.show(
+      anchorKey: myKey,
+      bubbleContent: BubbleLabelContent(child: Text('Hello')),
+    );
+  },
+  child: Text('Show'),
+);
+
+// After (v5.0.0) - no GlobalKey needed!
+Builder(
+  builder: (context) {
+    return ElevatedButton(
+      onPressed: () {
+        BubbleLabel.show(
+          context: context,  // Uses this button as anchor!
+          bubbleContent: BubbleLabelContent(child: Text('Hello')),
+        );
+      },
+      child: Text('Show'),
+    );
+  },
+);
+```
+
+---
+
 ## 4.0.0 - 2025-12-12
 
 ### BREAKING CHANGES

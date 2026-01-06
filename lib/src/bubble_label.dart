@@ -79,7 +79,7 @@ class _BubbleBuildWidgetState extends State<_BubbleBuildWidget>
       return widget.content.positionOverride!;
     }
 
-    // Try to get position from the active anchor key
+    // Try to get position from the active anchor key (if provided)
     if (_activeAnchorKey != null) {
       final context = _activeAnchorKey!.currentContext;
       if (context != null) {
@@ -90,7 +90,7 @@ class _BubbleBuildWidgetState extends State<_BubbleBuildWidget>
       }
     }
 
-    // Fallback to stored render box
+    // Fallback to stored render box (from context or anchorKey)
     if (widget.content._renderBox != null &&
         widget.content._renderBox!.attached) {
       return widget.content._renderBox!.localToGlobal(Offset.zero);
@@ -105,7 +105,7 @@ class _BubbleBuildWidgetState extends State<_BubbleBuildWidget>
       return const Size(100, 40);
     }
 
-    // Try to get size from the active anchor key
+    // Try to get size from the active anchor key (if provided)
     if (_activeAnchorKey != null) {
       final context = _activeAnchorKey!.currentContext;
       if (context != null) {
@@ -116,7 +116,7 @@ class _BubbleBuildWidgetState extends State<_BubbleBuildWidget>
       }
     }
 
-    // Fallback to stored render box
+    // Fallback to stored render box (from context or anchorKey)
     if (widget.content._renderBox != null &&
         widget.content._renderBox!.attached) {
       return widget.content._renderBox!.size;
@@ -611,30 +611,34 @@ class BubbleLabel {
   /// played. If another bubble is active, it is dismissed first and
   /// then the new one is shown.
   ///
-  /// `anchorKey` can be provided so the bubble automatically derives
-  /// the anchor `RenderBox` without requiring callers to manually call
-  /// `context.findRenderObject()`.
+  /// `context` is required and serves two purposes:
+  /// 1. Finding the Overlay widget in the widget tree
+  /// 2. As the anchor widget for positioning (if no `anchorKey` or
+  ///    `positionOverride` is provided)
   ///
-  /// `context` is optional but recommended when using `positionOverride`
-  /// to ensure the Overlay can be found.
+  /// `anchorKey` is optional. If provided, the bubble will be anchored to
+  /// that widget. If not provided and no `positionOverride` is set, the
+  /// bubble will be anchored to the widget associated with `context`.
   ///
   /// Requires: An Overlay widget in the widget tree (provided by
   /// MaterialApp, CupertinoApp, or manually added).
   static Future<void> show({
+    required BuildContext context,
     required BubbleLabelContent bubbleContent,
     bool animate = true,
     GlobalKey? anchorKey,
-    BuildContext? context,
   }) async {
-    assert(
-      (bubbleContent.positionOverride != null) ^ (anchorKey != null),
-      'Provide exactly one of an anchorKey or a positionOverride so the bubble can compute its anchor.',
-    );
-
     var content = bubbleContent;
 
-    // Resolve overlay BEFORE any async gaps to avoid using BuildContext across async gaps
-    final overlay = _resolveOverlay(anchorKey, context);
+    // Use the provided context for overlay lookup
+    final targetContext = context;
+
+    // Try root overlay first (works in most cases with MaterialApp/CupertinoApp)
+    OverlayState? overlay = Overlay.maybeOf(targetContext, rootOverlay: true);
+
+    // Fallback to nearest overlay
+    overlay ??= Overlay.maybeOf(targetContext, rootOverlay: false);
+
     if (overlay == null) {
       _throwOverlayError();
       return;
@@ -650,13 +654,23 @@ class BubbleLabel {
       BubbleLabel._animationController.state = true;
     }
 
-    final renderBox = _resolveAnchorRenderBox(anchorKey);
+    // Resolve render box: prefer anchorKey, then context, then positionOverride
+    RenderBox? renderBox;
+    if (anchorKey != null) {
+      renderBox = _resolveAnchorRenderBox(anchorKey);
+    } else if (content.positionOverride == null) {
+      // Use the context's render object as the anchor
+      final renderObject = context.findRenderObject();
+      if (renderObject is RenderBox) {
+        renderBox = renderObject;
+      }
+    }
 
     if (renderBox != null && renderBox != content._renderBox) {
       content = content._withRenderBox(renderBox);
     }
 
-    // Store the anchor key for dynamic position tracking
+    // Store the anchor key for dynamic position tracking (null if using context)
     _activeAnchorKey = anchorKey;
 
     //set the new bubble content
@@ -747,53 +761,22 @@ class BubbleLabel {
   //-------------------------------------------------------------//
 
   static void _throwOverlayError() {
-    const errorMessage =
-        'BubbleLabel requires an Overlay widget in the widget tree.\n'
-        'This typically happens when your app does not use MaterialApp or CupertinoApp.\n\n'
-        'To fix this, ensure your app uses one of these:\n'
-        '  • MaterialApp\n'
-        '  • CupertinoApp\n'
-        '  • Custom Overlay widget\n\n'
-        'Example:\n'
-        '  MaterialApp(\n'
-        '    home: Scaffold(\n'
-        '      body: YourContent(),\n'
-        '    ),\n'
-        '  )';
-
-    assert(false, errorMessage);
-    throw FlutterError(errorMessage);
-  }
-
-  /// Resolves the OverlayState from the given anchorKey or context.
-  /// Returns null if no overlay can be found.
-  static OverlayState? _resolveOverlay(
-    GlobalKey? anchorKey,
-    BuildContext? callerContext,
-  ) {
-    // Get context from anchorKey or use the provided context
-    BuildContext? contextToUse = anchorKey?.currentContext ?? callerContext;
-
-    // If we still don't have a context, we can't proceed
-    if (contextToUse == null) {
-      return null;
-    }
-
-    // Try to find the Overlay widget in the widget tree
-    OverlayState? overlay;
-    try {
-      overlay = Overlay.of(contextToUse);
-    } catch (e) {
-      // If the direct approach fails, try to find it through Navigator
-      try {
-        final navigator = Navigator.of(contextToUse);
-        overlay = navigator.overlay;
-      } catch (_) {
-        return null;
-      }
-    }
-
-    return overlay;
+    throw FlutterError(
+      'BubbleLabel could not find an Overlay widget.\n\n'
+      'This typically happens when:\n'
+      '  • Your app does not use MaterialApp or CupertinoApp\n'
+      '  • The widget tree has complex nesting with custom overlays\n\n'
+      'Solutions:\n'
+      '  1. Ensure MaterialApp/CupertinoApp is at the root of your app\n'
+      '  2. Pass context explicitly: BubbleLabel.show(context: context, anchorKey: key, ...)\n'
+      '  3. Wrap your widget in Builder to get proper context\n\n'
+      'Example:\n'
+      '  BubbleLabel.show(\n'
+      '    context: context,  // Pass context here\n'
+      '    anchorKey: myKey,\n'
+      '    bubbleContent: BubbleLabelContent(...),\n'
+      '  )\n',
+    );
   }
 
   /// Inserts the background overlay and bubble entries into the Overlay.

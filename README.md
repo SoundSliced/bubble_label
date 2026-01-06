@@ -5,10 +5,12 @@ A small Flutter package that shows a floating bubble label aligned to a child wi
 This provides a lightweight API to display a bubble-style label anchored to a widget, including optional background overlay and simple show/dismiss animations.
 
 ## Features
+- **Simplified API (v5.0.0)** — No GlobalKey boilerplate needed! Just pass `context` and the bubble anchors to that widget automatically.
 - Bubble label content that can be positioned and sized.
 - Background overlay with configurable opacity.
 - Simple show/dismiss animations.
 - Easy to use static API: `BubbleLabel.show(...)` and `BubbleLabel.dismiss()`.
+- Works reliably in complex widget trees with robust overlay detection.
 
 
 ## Example app
@@ -23,7 +25,7 @@ Add the package as a dependency in your app's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bubble_label: ^4.0.0
+  bubble_label: ^5.0.0
 ```
 
 > When using this package from outside the repository (published), replace the path dependency with a hosted version.
@@ -32,28 +34,54 @@ dependencies:
 
 No wrapper widget is required! The package uses Flutter's native `Overlay` system, which is automatically provided by `MaterialApp`, `CupertinoApp`, or any widget tree that includes an `Overlay`.
 
-A minimal usage looks like this:
+**Simplest usage (v5.0.0+):**
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:bubble_label/bubble_label.dart';
 
-void main() => runApp(const MyApp());
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        body: Center(child: Text('Your app')),
-      ),
+// In your widget's build method:
+Builder(
+  builder: (context) {
+    return ElevatedButton(
+      onPressed: () {
+        BubbleLabel.show(
+          context: context,  // Uses this button as anchor!
+          bubbleContent: BubbleLabelContent(
+            child: const Text('Hello bubble!'),
+            bubbleColor: Colors.blue,
+          ),
+        );
+      },
+      child: const Text('Show Bubble'),
     );
-  }
-}
+  },
+);
 ```
 
-Use `BubbleLabel.show(...)` to present a bubble and provide a `BubbleLabelContent` containing the bubble content and position information. For a full runnable example, see the `example/` directory.
+That's it! No `GlobalKey` needed. The bubble will appear above the button that was tapped.
+
+**With explicit anchor (when needed):**
+
+```dart
+final myKey = GlobalKey();
+
+ElevatedButton(
+  key: myKey,
+  onPressed: () {
+    BubbleLabel.show(
+      context: context,
+      anchorKey: myKey,  // Anchor to a specific widget
+      bubbleContent: BubbleLabelContent(
+        child: const Text('Anchored bubble'),
+      ),
+    );
+  },
+  child: const Text('Show'),
+);
+```
+
+For a full runnable example, see the `example/` directory.
 
 Example app features
 --------------------
@@ -67,12 +95,10 @@ Example app features
   - Dismiss (animated) — dismisses the bubble with animation (`animate: true`).
   - Long-press area — long-pressing this area will call `BubbleLabel.show` with `shouldActivateOnLongPressOnAllPlatforms` set; you can toggle `Use overlay` and `Animate` to see the effect.
 
-```
-
 ## API
 Key public pieces of the API:
 
-- `BubbleLabel.show(...)` — show the bubble overlay with provided content and parameters. Passing an `anchorKey` lets the bubble automatically derive the anchor `RenderBox`, so you can skip manual `context.findRenderObject()` calls; alternatively you can supply a `BubbleLabelContent.positionOverride`. Exactly one of those anchor inputs must be provided—supplying both is disallowed.
+- `BubbleLabel.show(...)` — show the bubble overlay with provided content and parameters. **`context` is required** and serves two purposes: (1) finding the Overlay widget, and (2) as the default anchor for positioning the bubble. If you want to anchor to a different widget, pass an `anchorKey`. Alternatively, use `BubbleLabelContent.positionOverride` for explicit screen coordinates.
 - `BubbleLabel.dismiss()` — dismiss the bubble.
 - `BubbleLabel.isActive` — boolean property indicating whether a bubble is currently active.
 - `BubbleLabel.controller` — access to the injected controller instance for programmatic inspection or updates (advanced use).
@@ -123,6 +149,55 @@ Testing & debugging tip: The package exposes a small `controller` that can be in
 - Removed `childWidgetPosition`/`childWidgetSize` — instead rely on the anchor automatically resolved from the `anchorKey` you pass to `BubbleLabel.show`, or fall back to `positionOverride` when specifying explicit screen coordinates.
 - `BubbleLabelContent` now includes an `id` and `dismissOnBackgroundTap` to enable automatic background tap dismissals.
 
+### Migrating from v4.x to v5.0.0
+
+**Before (v4.x):**
+```dart
+final myKey = GlobalKey();
+ElevatedButton(
+  key: myKey,
+  onPressed: () {
+    BubbleLabel.show(
+      anchorKey: myKey,
+      bubbleContent: BubbleLabelContent(
+        child: Text('Hello'),
+      ),
+    );
+  },
+  child: Text('Show'),
+);
+```
+
+**After (v5.0.0) - Simplified:**
+```dart
+Builder(
+  builder: (context) {
+    return ElevatedButton(
+      onPressed: () {
+        BubbleLabel.show(
+          context: context, // Uses this button as anchor!
+          bubbleContent: BubbleLabelContent(
+            child: Text('Hello'),
+          ),
+        );
+      },
+      child: Text('Show'),
+    );
+  },
+);
+```
+
+**After (v5.0.0) - With explicit anchorKey (optional):**
+```dart
+BubbleLabel.show(
+  context: context,  // Required for overlay lookup
+  anchorKey: myKey,  // Optional: anchor to a different widget
+  bubbleContent: BubbleLabelContent(
+    child: Text('Hello'),
+  ),
+);
+```
+
 ### Migrating from v3.x to v4.0.0
 
 **Before (v3.x):**
@@ -147,28 +222,47 @@ BubbleLabel.show(
 ```
 
 Advanced usage
-```
-// Show a bubble automatically anchored to the widget that triggered it
+```dart
+// Simplest usage: context widget becomes the anchor (no GlobalKey needed!)
+Builder(
+  builder: (context) {
+    return ElevatedButton(
+      onPressed: () {
+        BubbleLabel.show(
+          context: context,  // This button is the anchor
+          bubbleContent: BubbleLabelContent(
+            child: const Text('No overlay'),
+            bubbleColor: Colors.green,
+            backgroundOverlayLayerOpacity: 0.0,
+            verticalPadding: 10, // 10 px above the anchor
+          ),
+          animate: true,
+        );
+      },
+      child: const Text('Show without overlay'),
+    );
+  },
+);
+
+// With explicit anchorKey (when you need to anchor to a different widget)
 final showButtonKey = GlobalKey();
 ElevatedButton(
   key: showButtonKey,
   onPressed: () {
     BubbleLabel.show(
+      context: context,
+      anchorKey: showButtonKey,  // Anchor to this specific widget
       bubbleContent: BubbleLabelContent(
-        child: const Text('No overlay'),
-        bubbleColor: Colors.green,
-        backgroundOverlayLayerOpacity: 0.0,
-        verticalPadding: 10, // 10 px above the anchor
+        child: const Text('Anchored to key'),
       ),
-      anchorKey: showButtonKey,
-      animate: true,
     );
   },
-  child: const Text('Show without overlay'),
+  child: const Text('Show'),
 );
 
 // Show a bubble with an explicit screen offset anchor (use `positionOverride`)
 BubbleLabel.show(
+  context: context,
   bubbleContent: BubbleLabelContent(
     child: const Text('Position override bubble'),
     positionOverride: Offset(200, 150), // anchor at (200,150) screen coords
@@ -176,7 +270,7 @@ BubbleLabel.show(
 );
 ```
 
-Keep each `GlobalKey` as a long-lived field (for example, on your widget's state) and re-use it when calling `BubbleLabel.show`. That way the anchor `RenderBox` is stable, you avoid extra builders, and the bubble can always resolve the correct position.
+When using the simplified context-as-anchor approach, wrap your widget in a `Builder` to get a context that refers to that specific widget. If you need dynamic position tracking (e.g., the anchor widget moves), use a `GlobalKey` instead.
 
 ### Reactive Updates (v4.0.0+)
 
@@ -217,6 +311,37 @@ BubbleLabelContent(
 ```
 
 ## Changelog
+
+### 5.0.0 (2026-01-06) - Simplified API with Required Context
+
+**BREAKING CHANGES:**
+- **`context` is now a required parameter in `BubbleLabel.show()`** — This ensures reliable overlay detection in complex widget trees.
+- **`anchorKey` is now optional** — The `context` widget is used as the anchor by default. Pass `anchorKey` only when you need to anchor to a different widget.
+
+**New Features:**
+- **Simplified API** — No more GlobalKey boilerplate for simple use cases! Just pass `context` and the bubble anchors to that widget.
+- **Context-as-anchor** — When no `anchorKey` or `positionOverride` is provided, the widget from `context` becomes the anchor.
+
+**Improvements:**
+- **Robust overlay lookup strategy** — Now tries `rootOverlay: true` first, then falls back to `rootOverlay: false` for maximum compatibility.
+- **Better error messages** — Clearer guidance when overlay detection fails, with specific solutions.
+
+**Migration from v4.x:**
+
+```dart
+// Before (v4.x)
+BubbleLabel.show(
+  anchorKey: myKey,
+  bubbleContent: BubbleLabelContent(...),
+);
+
+// After (v5.0.0)
+BubbleLabel.show(
+  context: context,  // Now required!
+  anchorKey: myKey,
+  bubbleContent: BubbleLabelContent(...),
+);
+```
 
 ### 4.0.0 (2025-12-12) - Overlay-based Implementation & Enhanced Interactivity
 

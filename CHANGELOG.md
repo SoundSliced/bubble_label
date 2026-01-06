@@ -1,3 +1,21 @@
+## 5.1.0 - 2026-01-06
+
+### Bug Fixes
+
+- **Fixed bubble positioning with ancestor transforms**: Bubbles now correctly position themselves when the widget tree contains transforms such as `Transform.scale`, `ForcePhoneSizeOnWeb` (from `flutter_web_frame`), or `FittedBox`. Both the anchor position and visual size are now computed relative to the Overlay's coordinate system.
+
+- **Fixed bubble replacement during transforms**: When showing a new bubble while one is already active, the Overlay's RenderBox reference is now correctly preserved (previously it was being cleared by the dismiss call before the new bubble was inserted).
+
+- **Fixed crash when toggling transforms with active bubble**: Added safety checks for `RenderBox.attached` to prevent "Assertion failed: attached is not true" errors when the widget tree is rebuilt (e.g., toggling Transform.scale mode) while a bubble is active.
+
+### Example App
+
+- Added `Transform.scale` toggle to demonstrate bubble positioning with scaled content.
+- Added `ForcePhoneSizeOnWeb` toggle (via `flutter_web_frame`) to demonstrate bubble positioning with phone-size simulation wrappers.
+- The two transform toggles are mutually exclusive to simplify testing.
+
+---
+
 ## 5.0.0 - 2026-01-06
 
 ### BREAKING CHANGES

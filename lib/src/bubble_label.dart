@@ -17,10 +17,16 @@ class _BubbleBuildWidget extends StatefulWidget {
   final List<Effect<dynamic>> effects;
   final bool shouldIgnorePointer;
 
+  /// The RenderBox of the Overlay where this bubble is inserted.
+  /// Used to convert global coordinates to Overlay-local coordinates,
+  /// which is necessary when ancestor widgets contain transforms.
+  final RenderBox? overlayRenderBox;
+
   const _BubbleBuildWidget({
     required this.content,
     required this.effects,
     required this.shouldIgnorePointer,
+    this.overlayRenderBox,
   });
 
   @override
@@ -74,29 +80,57 @@ class _BubbleBuildWidgetState extends State<_BubbleBuildWidget>
   }
 
   Offset _computeAnchorPosition() {
-    // If position override is set, use it
+    // If position override is set, use it (absolute positioning)
     if (widget.content.positionOverride != null) {
       return widget.content.positionOverride!;
     }
 
-    // Try to get position from the active anchor key (if provided)
+    RenderBox? anchorRenderBox;
+
+    // Try to get render box from the active anchor key (if provided)
     if (_activeAnchorKey != null) {
-      final context = _activeAnchorKey!.currentContext;
-      if (context != null) {
-        final renderObject = context.findRenderObject();
+      final keyContext = _activeAnchorKey!.currentContext;
+      if (keyContext != null) {
+        final renderObject = keyContext.findRenderObject();
         if (renderObject is RenderBox && renderObject.attached) {
-          return renderObject.localToGlobal(Offset.zero);
+          anchorRenderBox = renderObject;
         }
       }
     }
 
     // Fallback to stored render box (from context or anchorKey)
-    if (widget.content._renderBox != null &&
+    if (anchorRenderBox == null &&
+        widget.content._renderBox != null &&
         widget.content._renderBox!.attached) {
-      return widget.content._renderBox!.localToGlobal(Offset.zero);
+      anchorRenderBox = widget.content._renderBox;
     }
 
-    return widget.content.anchorPosition;
+    if (anchorRenderBox == null || !anchorRenderBox.attached) {
+      return widget.content.anchorPosition;
+    }
+
+    // Convert anchor's local position to Overlay-local coordinates.
+    // This handles transforms (e.g., ForcePhoneSizeOnWeb, Transform.scale)
+    // by computing the position relative to the Overlay's coordinate system.
+    if (widget.overlayRenderBox != null && widget.overlayRenderBox!.attached) {
+      // The anchor and overlay are in different parts of the tree
+      // (anchor is in main content, overlay entries are in overlay layer).
+      // We need to compute the anchor's position in overlay's coordinate space.
+      //
+      // Method: Get anchor's global (screen) position, then convert to
+      // overlay's local coordinates. This properly handles all transforms.
+      final globalPosition = anchorRenderBox.localToGlobal(Offset.zero);
+      final overlayLocalPosition =
+          widget.overlayRenderBox!.globalToLocal(globalPosition);
+
+      // Debug: uncomment to verify positions
+      // debugPrint('Anchor global: $globalPosition, Overlay local: $overlayLocalPosition');
+
+      return overlayLocalPosition;
+    }
+
+    // Fallback to global position if overlay render box is not available
+    return anchorRenderBox.localToGlobal(Offset.zero);
   }
 
   Size _computeAnchorSize() {
@@ -105,24 +139,55 @@ class _BubbleBuildWidgetState extends State<_BubbleBuildWidget>
       return const Size(100, 40);
     }
 
-    // Try to get size from the active anchor key (if provided)
+    RenderBox? anchorRenderBox;
+
+    // Try to get render box from the active anchor key (if provided)
     if (_activeAnchorKey != null) {
-      final context = _activeAnchorKey!.currentContext;
-      if (context != null) {
-        final renderObject = context.findRenderObject();
+      final keyContext = _activeAnchorKey!.currentContext;
+      if (keyContext != null) {
+        final renderObject = keyContext.findRenderObject();
         if (renderObject is RenderBox && renderObject.attached) {
-          return renderObject.size;
+          anchorRenderBox = renderObject;
         }
       }
     }
 
     // Fallback to stored render box (from context or anchorKey)
-    if (widget.content._renderBox != null &&
+    if (anchorRenderBox == null &&
+        widget.content._renderBox != null &&
         widget.content._renderBox!.attached) {
-      return widget.content._renderBox!.size;
+      anchorRenderBox = widget.content._renderBox;
     }
 
-    return widget.content.anchorSize;
+    if (anchorRenderBox == null || !anchorRenderBox.attached) {
+      return widget.content.anchorSize;
+    }
+
+    final localSize = anchorRenderBox.size;
+
+    // When the anchor is inside a transform (e.g., ForcePhoneSizeOnWeb, Transform.scale),
+    // we need to compute the VISUAL size as it appears on screen/in the overlay.
+    // We do this by transforming the corners of the widget and measuring the result.
+    if (widget.overlayRenderBox != null && widget.overlayRenderBox!.attached) {
+      // Get the positions of two corners in overlay coordinates
+      final topLeftGlobal = anchorRenderBox.localToGlobal(Offset.zero);
+      final bottomRightGlobal = anchorRenderBox
+          .localToGlobal(Offset(localSize.width, localSize.height));
+
+      final topLeftLocal =
+          widget.overlayRenderBox!.globalToLocal(topLeftGlobal);
+      final bottomRightLocal =
+          widget.overlayRenderBox!.globalToLocal(bottomRightGlobal);
+
+      // The visual size is the difference between the transformed corners
+      final visualWidth = (bottomRightLocal.dx - topLeftLocal.dx).abs();
+      final visualHeight = (bottomRightLocal.dy - topLeftLocal.dy).abs();
+
+      return Size(visualWidth, visualHeight);
+    }
+
+    // Fallback to local size if overlay render box is not available
+    return localSize;
   }
 
   @override
@@ -324,6 +389,13 @@ final _bubbleLabelBubbleEntryController = RM.inject<OverlayEntry?>(
   autoDisposeWhenNotUsed: true,
 );
 
+/// Stores the RenderBox of the Overlay for coordinate conversion.
+/// This is needed to handle transforms in the ancestor widget tree.
+final _bubbleLabelOverlayRenderBoxController = RM.inject<RenderBox?>(
+  () => null,
+  autoDisposeWhenNotUsed: true,
+);
+
 /// Timer for the dismiss animation - can be cancelled if a new dismiss is called
 Timer? _dismissAnimationTimer;
 
@@ -444,7 +516,7 @@ class BubbleLabelContent {
   /// computed anchor position based on override or render box
   Offset get anchorPosition =>
       positionOverride ??
-      (_renderBox != null
+      (_renderBox != null && _renderBox!.attached
           ? _renderBox!.localToGlobal(Offset.zero)
           : const Offset(0, 0));
 
@@ -657,11 +729,25 @@ class BubbleLabel {
       }
     }
 
+    // Capture the Overlay's RenderBox for coordinate conversion.
+    // This is needed to properly position bubbles when ancestor widgets
+    // contain transforms (e.g., ForcePhoneSizeOnWeb, Transform.scale).
+    RenderBox? overlayRenderBox;
+    final overlayContext = overlay.context;
+    final overlayRenderObject = overlayContext.findRenderObject();
+    if (overlayRenderObject is RenderBox) {
+      overlayRenderBox = overlayRenderObject;
+    }
+
     //dismiss the previous bubble (just in case)
     if (BubbleLabel.isActive) {
       // When replacing an active bubble, honor the caller's animate flag.
       await BubbleLabel.dismiss(animate: animate);
     }
+
+    // Set the overlayRenderBox AFTER dismiss to avoid it being cleared
+    // when replacing an active bubble with a new one.
+    _bubbleLabelOverlayRenderBoxController.state = overlayRenderBox;
 
     if (animate) {
       BubbleLabel._animationController.state = true;
@@ -703,6 +789,8 @@ class BubbleLabel {
       _dismissAnimationTimer = Timer(0.3.sec, () {
         _dismissAnimationTimer = null;
         _activeAnchorKey = null; // Clear anchor key
+        _bubbleLabelOverlayRenderBoxController.state =
+            null; // Clear overlay reference
         _removeOverlayEntries();
         BubbleLabel.controller.refresh();
         completer.complete();
@@ -712,6 +800,8 @@ class BubbleLabel {
     } else {
       // no animation -> remove immediately
       _activeAnchorKey = null; // Clear anchor key
+      _bubbleLabelOverlayRenderBoxController.state =
+          null; // Clear overlay reference
       _removeOverlayEntries();
       BubbleLabel._animationController.state = null;
       BubbleLabel.controller.refresh();
@@ -821,6 +911,7 @@ class BubbleLabel {
                 effects: BubbleLabel._getEffects(),
                 shouldIgnorePointer:
                     BubbleLabel.controller.state!.shouldIgnorePointer,
+                overlayRenderBox: _bubbleLabelOverlayRenderBoxController.state,
               );
             },
           ),

@@ -11,6 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   s_toggle: ^2.0.1
+  flutter_web_frame: ^1.0.0
   bubble_label:
     path: ../
 

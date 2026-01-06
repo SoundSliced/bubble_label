@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:bubble_label/bubble_label.dart';
 import 'package:s_toggle/s_toggle.dart';
+import 'package:flutter_web_frame/flutter_web_frame.dart';
 
 void main() => runApp(const ExampleApp());
 
@@ -28,6 +29,17 @@ class _ExampleAppState extends State<ExampleApp> {
   /// Toggle to enable a background overlay behind the bubble.
   bool useOverlay = true;
 
+  /// Toggle to wrap the content in a Transform.scale widget.
+  /// This demonstrates that bubbles position correctly even with transforms.
+  bool useTransform = false;
+
+  /// Toggle to use ForcePhoneSizeOnWeb wrapper.
+  /// This simulates the common use case of wrapping web apps for phone dimensions.
+  bool useForcePhoneSize = false;
+
+  /// The scale factor when transform is enabled.
+  double transformScale = 0.45;
+
   /// Visual feedback message for tap inside/outside detection
   String? _tapFeedback;
 
@@ -37,6 +49,114 @@ class _ExampleAppState extends State<ExampleApp> {
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) setState(() => _tapFeedback = null);
     });
+  }
+
+  /// Builds the example page, optionally wrapped with Transform.scale
+  /// or ForcePhoneSizeOnWeb to demonstrate that bubbles position correctly
+  /// even with transforms.
+  Widget _buildExamplePageWithOptionalTransform() {
+    final examplePage = ExamplePage(
+      animate: animate,
+      useOverlay: useOverlay,
+      shouldIgnorePointer: shouldIgnorePointer,
+      onTapFeedback: _showTapFeedback,
+    );
+
+    // No transform wrappers
+    if (!useTransform && !useForcePhoneSize) {
+      return examplePage;
+    }
+
+    // ForcePhoneSizeOnWeb wrapper (simulates flutter_web_frame behavior)
+    if (useForcePhoneSize) {
+      return Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.blue.shade300, width: 2),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Stack(
+            children: [
+              // Background label showing this is transformed
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade100,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'ForcePhoneSizeOnWeb',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.blue.shade800,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              // The ForcePhoneSizeOnWeb wrapper (using FlutterWebFrame)
+              Center(
+                child: FlutterWebFrame(
+                  maximumSize: const Size(350, 600),
+                  enabled: true,
+                  backgroundColor: Colors.grey.shade200,
+                  builder: (context) => examplePage,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Transform.scale wrapper
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.purple.shade300, width: 2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: Stack(
+          children: [
+            // Background label showing this is transformed
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'Transform.scale(${transformScale.toStringAsFixed(2)})',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.purple.shade800,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            // The scaled content
+            Center(
+              child: Transform.scale(
+                scale: transformScale,
+                child: examplePage,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -80,7 +200,7 @@ class _ExampleAppState extends State<ExampleApp> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: SizedBox(
-                  height: 80,
+                  height: 140,
                   child: Column(
                     spacing: 8,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -142,6 +262,58 @@ class _ExampleAppState extends State<ExampleApp> {
                           ],
                         ),
                       ),
+
+                      /// Toggle to enable/disable transform wrapper
+                      Flexible(
+                        child: Row(
+                          spacing: 8,
+                          children: [
+                            const Text('Wrap with Transform.scale'),
+                            SToggle(
+                              size: 40,
+                              onColor: Colors.green,
+                              offColor: Colors.red,
+                              value: useTransform,
+                              onChange: (val) {
+                                setState(() {
+                                  useTransform = val;
+                                  if (val) useForcePhoneSize = false;
+                                });
+                              },
+                            ),
+                            if (useTransform)
+                              Text(
+                                '(${transformScale.toStringAsFixed(2)}x)',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      /// Toggle to enable/disable ForcePhoneSizeOnWeb wrapper
+                      Flexible(
+                        child: Row(
+                          spacing: 8,
+                          children: [
+                            const Text('Wrap with ForcePhoneSizeOnWeb'),
+                            SToggle(
+                              size: 40,
+                              onColor: Colors.green,
+                              offColor: Colors.red,
+                              value: useForcePhoneSize,
+                              onChange: (val) {
+                                setState(() {
+                                  useForcePhoneSize = val;
+                                  if (val) useTransform = false;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -150,12 +322,7 @@ class _ExampleAppState extends State<ExampleApp> {
 
             /// The main example page with buttons to show bubbles.
             Flexible(
-              child: ExamplePage(
-                animate: animate,
-                useOverlay: useOverlay,
-                shouldIgnorePointer: shouldIgnorePointer,
-                onTapFeedback: _showTapFeedback,
-              ),
+              child: _buildExamplePageWithOptionalTransform(),
             ),
 
             /// Dismiss buttons
@@ -303,13 +470,13 @@ class _ExamplePageState extends State<ExamplePage> {
                 // Visual feedback callbacks for tap detection
                 onTapInside: (details) {
                   widget.onTapFeedback?.call(
-                    '✅ Tap INSIDE bubble detected!',
+                    'Tap INSIDE bubble detected!',
                     Colors.green,
                   );
                 },
                 onTapOutside: (details) {
                   widget.onTapFeedback?.call(
-                    '⚠️ Tap OUTSIDE bubble detected!',
+                    'Tap OUTSIDE bubble detected!',
                     Colors.orange,
                   );
                 },

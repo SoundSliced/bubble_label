@@ -1,0 +1,27 @@
+# Scripts
+scripts/
+*.sh
+
+# Build artifacts and cache
+build/
+.dart_tool/
+.packages
+example/build/
+example/.dart_tool/
+example/.packages
+
+# IDE and editor files
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test cache
+test/.test_cache/
+.test_cache/

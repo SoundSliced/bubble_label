@@ -6,6 +6,7 @@ This provides a lightweight API to display a bubble-style label anchored to a wi
 
 ## Features
 - **Simplified API (v5.0.0)** — No GlobalKey boilerplate needed! Just pass `context` and the bubble anchors to that widget automatically.
+- **Transform-aware positioning (v5.1.0)** — Bubbles correctly position themselves even when ancestor widgets contain transforms like `Transform.scale`, `ForcePhoneSizeOnWeb`, or `FittedBox`.
 - Bubble label content that can be positioned and sized.
 - Background overlay with configurable opacity.
 - Simple show/dismiss animations.
@@ -25,7 +26,7 @@ Add the package as a dependency in your app's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bubble_label: ^5.0.0
+  bubble_label: ^5.1.0
 ```
 
 > When using this package from outside the repository (published), replace the path dependency with a hosted version.
@@ -311,6 +312,18 @@ BubbleLabelContent(
 ```
 
 ## Changelog
+
+### 5.1.0 (2026-01-06) - Transform-Aware Positioning
+
+**Bug Fixes:**
+- **Fixed bubble positioning with ancestor transforms** — Bubbles now correctly position themselves when the widget tree contains transforms such as `Transform.scale`, `ForcePhoneSizeOnWeb` (from `flutter_web_frame`), or `FittedBox`. Both the anchor position and visual size are computed relative to the Overlay's coordinate system.
+- **Fixed bubble replacement during transforms** — When showing a new bubble while one is already active, the Overlay's RenderBox reference is now correctly preserved.
+- **Fixed crash when toggling transforms with active bubble** — Added safety checks for `RenderBox.attached` to prevent crashes when the widget tree is rebuilt while a bubble is active.
+
+**Example App:**
+- Added `Transform.scale` and `ForcePhoneSizeOnWeb` toggles to demonstrate transform-aware positioning.
+
+---
 
 ### 5.0.0 (2026-01-06) - Simplified API with Required Context
 

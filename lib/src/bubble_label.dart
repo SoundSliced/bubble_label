@@ -644,17 +644,8 @@ class BubbleLabel {
       return;
     }
 
-    //dismiss the previous bubble (just in case)
-    if (BubbleLabel.isActive) {
-      // When replacing an active bubble, honor the caller's animate flag.
-      await BubbleLabel.dismiss(animate: animate);
-    }
-
-    if (animate) {
-      BubbleLabel._animationController.state = true;
-    }
-
-    // Resolve render box: prefer anchorKey, then context, then positionOverride
+    // Resolve render box BEFORE any async gaps to avoid lint warning
+    // "Don't use BuildContext across async gaps"
     RenderBox? renderBox;
     if (anchorKey != null) {
       renderBox = _resolveAnchorRenderBox(anchorKey);
@@ -664,6 +655,16 @@ class BubbleLabel {
       if (renderObject is RenderBox) {
         renderBox = renderObject;
       }
+    }
+
+    //dismiss the previous bubble (just in case)
+    if (BubbleLabel.isActive) {
+      // When replacing an active bubble, honor the caller's animate flag.
+      await BubbleLabel.dismiss(animate: animate);
+    }
+
+    if (animate) {
+      BubbleLabel._animationController.state = true;
     }
 
     if (renderBox != null && renderBox != content._renderBox) {

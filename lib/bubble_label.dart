@@ -3,4 +3,4 @@
 /// This library exports all public APIs for the bubble_label package.
 library;
 
-export 'src/bubble_label.dart';
+export 'package:s_packages/s_packages.dart';

@@ -1,3 +1,10 @@
+## 6.1.0
+- `s_packages` dependency upgraded to ^1.3.0
+- Added `animationDuration` for custom show/dismiss timing
+- Added `showCurve` and `dismissCurve` for independent animation curves
+- Added `horizontalOffset` for horizontal positioning control
+- Added `showOnHover` flag to trigger label display on mouse hover
+
 ## 6.0.0 - 2026-02-07
 
 - package no longer holds the source code for it, but exports/exposes the `s_packages` pub package instead, which will hold this package's latest source code.

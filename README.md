@@ -12,6 +12,9 @@ This provides a lightweight API to display a bubble-style label anchored to a wi
 - Simple show/dismiss animations.
 - Easy to use static API: `BubbleLabel.show(...)` and `BubbleLabel.dismiss()`.
 - Works reliably in complex widget trees with robust overlay detection.
+- **Animation control (v6.1.0)** — Custom `animationDuration`, `showCurve` and `dismissCurve` for independent show/dismiss animation curves
+- **Horizontal offset** — `horizontalOffset` for fine-grained horizontal positioning
+- **Hover trigger** — `showOnHover` flag to display the label on mouse hover
 
 
 ## Example app
@@ -26,7 +29,7 @@ Add the package as a dependency in your app's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bubble_label: ^6.0.0
+  bubble_label: ^6.1.0
 ```
 
 > When using this package from outside the repository (published), replace the path dependency with a hosted version.

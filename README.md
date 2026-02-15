@@ -29,7 +29,7 @@ Add the package as a dependency in your app's `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bubble_label: ^6.1.0
+  bubble_label: ^6.1.2
 ```
 
 > When using this package from outside the repository (published), replace the path dependency with a hosted version.

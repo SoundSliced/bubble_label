@@ -1,3 +1,9 @@
+## 6.1.2
+- `s_packages` package dependency upgraded
+
+## 6.1.1
+- `s_packages` package dependency upgraded
+
 ## 6.1.0
 - `s_packages` dependency upgraded to ^1.3.0
 - Added `animationDuration` for custom show/dismiss timing

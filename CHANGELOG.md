@@ -1,5 +1,4 @@
-## 6.1.2
-- `s_packages` package dependency upgraded
+
 
 ## 6.1.1
 - `s_packages` package dependency upgraded

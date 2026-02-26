@@ -1,4 +1,5 @@
 import 'package:bubble_label/bubble_label.dart';
+import 'package:flutter_web_frame/flutter_web_frame.dart';
 
 void main() => runApp(const ExampleApp());
 

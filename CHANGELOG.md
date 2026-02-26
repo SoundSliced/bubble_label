@@ -1,4 +1,5 @@
-
+## [6.1.2]
+- `s_packages` dependency upgraded to ^3.0.0
 
 ## 6.1.1
 - `s_packages` package dependency upgraded
